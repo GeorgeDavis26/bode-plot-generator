@@ -1,0 +1,7 @@
+# Segger Embedded Studio
+**/Output/
+**/Debug/
+*.emSession
+*.jlink
+
+.DS_store
