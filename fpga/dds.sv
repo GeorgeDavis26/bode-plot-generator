@@ -77,14 +77,14 @@ end
 logic [DAC_WIDTH-1:0] dac_out_reg;
 always_ff @(posedge clk) begin
     if (~reset) begin
-        dac_out_reg <= 8'h7F; // Reset to the midpoint (127)
+        dac_out_reg <= 8'h80; // Reset to the midpoint (128)
     end else begin
         // For quadrants 2 and 3, subtract amplitude from midpoint
         if (quadrant[1]) begin
-            dac_out_reg <= 8'h7F - lut_out;
+            dac_out_reg <= 8'h80 - lut_out;
         // For quadrants 0 and 1, add amplitude to midpoint
         end else begin
-            dac_out_reg <= 8'h7F + lut_out;
+            dac_out_reg <= 8'h80 + lut_out;
         end
     end
 end
