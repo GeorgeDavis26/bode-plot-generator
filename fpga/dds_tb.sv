@@ -78,7 +78,7 @@ module dds_tb;
             case (i)
                 // At 0 degrees, sin(0) = 0 and output should be midpoint (128)
                 0: begin
-                    expected_val = 8'h7F;
+                    expected_val = 8'h80;
                     if (dac_out !== expected_val) begin
                         $display("ERROR at 0 degrees (sample %0d): got %h, expected %h", i, dac_out, expected_val);
                         error_count++;
@@ -87,7 +87,7 @@ module dds_tb;
                 
                 // At 90 degrees, sin(pi/2) = 1 and output should be the peak
                 (FULL_WAVE/4): begin
-                    expected_val = 8'hFE;
+                    expected_val = 8'hFF;
                     if (dac_out !== expected_val) begin
                         $display("ERROR at 90 degrees (sample %0d): got %h, expected %h", i, dac_out, expected_val);
                         error_count++;
@@ -96,7 +96,7 @@ module dds_tb;
 
                 // At 180 degrees, sin(pi) = 0 and output should be midpoint (128)
                 (FULL_WAVE/2): begin
-                    expected_val = 8'h7F;
+                    expected_val = 8'h80;
                     if (dac_out !== expected_val) begin
                         $display("ERROR at 180 degrees (sample %0d): got %h, expected %h", i, dac_out, expected_val);
                         error_count++;
@@ -105,7 +105,7 @@ module dds_tb;
 
                 // At 270 degrees, sin(3pi/2) = -1 and output should be min value
                 (3*FULL_WAVE/4): begin
-                    expected_val = 8'h00;
+                    expected_val = 8'h01;
                     if (dac_out !== expected_val) begin
                         $display("ERROR at 270 degrees (sample %0d): got %h, expected %h", i, dac_out, expected_val);
                         error_count++;
