@@ -14,10 +14,12 @@ void config(void) {
     configureClock();
     
     gpioEnable(GPIO_PORT_A);
-    pinMode(GPIO_ADC1, GPIO_OUTPUT);
+    pinMode(GPIO_ADC1, GPIO_ANALOG);
 
     RCC->APB2ENR |= (RCC_APB2ENR_TIM15EN);
     initTIM(TIM15);
+
+    configureADC();
 }
 
 void adcConversion(void)
@@ -34,8 +36,10 @@ void adcConversion(void)
 }
 
 
-int adc_test(void){
+int main(void){
     config();
     adcConversion();
-}
 
+    while(1) {
+    }
+}
