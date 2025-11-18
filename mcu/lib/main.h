@@ -12,9 +12,4 @@
 
 #include "STM32L432KC.h"
 
-#define NUM_FREQUENCIES 10
-
-uint16_t gain[NUM_SAMPLES*NUM_FREQUENCIES];
-uint16_t phase[NUM_SAMPLES*NUM_FREQUENCIES];
-
 #endif // MAIN_H
