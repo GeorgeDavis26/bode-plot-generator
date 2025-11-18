@@ -156,10 +156,6 @@ int main(void) {
     }
 
     sendString(USART, webpageStart);
-
-    sendString(USART, "<h2>LED Status</h2>");
-
-    sendString(USART, "<p>This is a new line!</p>");
   
     //sendString(USART, webpageEnd);
   }
