@@ -8,25 +8,32 @@ void configureADC(void) {
     // Enable ADC clock
     RCC->AHB2ENR |= RCC_AHB2ENR_ADCEN;
 
-    // Enable VREFINT channel (internal Vref)
-    ADC1_COMMON->CCR |= ADC_CCR_VREFEN;
+    ///////////////////////// ADC CALIBRATION /////////////////////////////
+    // To start ADC first exit Deep-power-down mode
+    ADC1->CR &= ~ADC_CR_DEEPPWD;
 
     //ADC1 Voltage Regulator Enable
     ADC1->CR |= ADC_CR_ADVREGEN;
-    delay_millis(TIM15, 1);
-    
-    //many CFGR registers can't be written to w/o these bits low
-    ADC1->CR &= ~ADC_CR_ADSTART;
-    ADC1->CR &= ~ADC_CR_JADSTART;
+    delay_micros(TIM15, 25);  // software has to wait for startup time
+    ADC1->CR &= ~ADC_CR_ADEN;
 
     while (!(ADC1->CR & ADC_CR_ADVREGEN));
 
     //Differential mode for calibration
     ADC1->CR |= ADC_CR_ADCALDIF;
+
     //Run Calibration Protocol
     ADC1->CR |= ADC_CR_ADCAL;
-    while (ADC1->CR & ADC_CR_ADCAL);
-    
+    while (!(ADC1->CR & ADC_CR_ADCAL));
+
+
+    //////////////////////////ADC DR CONFIGURATION////////////////////////////
+
+
+    //many CFGR registers can't be written to w/o these bits low
+    ADC1->CR &= ~ADC_CR_ADSTART;
+    ADC1->CR &= ~ADC_CR_JADSTART;
+
     //Data Resolution
     ADC1->CFGR &= ~ADC_CFGR_RES;
     ADC1->CFGR |= _VAL2FLD(ADC_CFGR_RES, SIX_BIT_ADC1_RES);
@@ -36,6 +43,8 @@ void configureADC(void) {
     
     ///////////////////////// VREFINT TESTING /////////////////////////////
 
+    // Enable VREFINT channel (internal Vref)
+    ADC1_COMMON->CCR |= ADC_CCR_VREFEN;
     //ADC1 sample time register for channel 0 
     ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR1_SMP0, 2); //12.5 ADC1 clock cycles
 
@@ -45,7 +54,7 @@ void configureADC(void) {
     ADC1->CFGR |= ADC_CFGR_CONT;
 
     //Conversion order and count
-    ADC1->SQR1 |= ~ADC_SQR1_L;
+    ADC1->SQR1 &= ~ADC_SQR1_L;
     ADC1->SQR1 |= _VAL2FLD(ADC_SQR1_L, 0); //1 conversion
 
     ADC1->SQR1 &= ~ADC_SQR1_SQ1;
