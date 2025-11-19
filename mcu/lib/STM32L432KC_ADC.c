@@ -45,22 +45,6 @@ void configureADC(void) {
     while (ADC1->ISR & ADC_ISR_ADRDY);
 }
 
-void config(void) {
-    configureFlash();
-    configureClock();
-
-    gpioEnable(GPIO_PORT_B);
-    gpioEnable(GPIO_PORT_A);
-    
-    pinMode(GPIO_LED, GPIO_OUTPUT);
-    pinMode(GPIO_ADC1, GPIO_ANALOG);
-
-    RCC->APB2ENR |= (RCC_APB2ENR_TIM15EN);
-    initTIM(TIM15);
-    
-    configureADC();
-}
-
 void adcConversion(void)
 {
     for (int j = 0; j < NUM_FREQUENCIES; j++) {
@@ -79,7 +63,7 @@ void adcConversion(void)
 }
 
 int adc(void){
-    config();
+    configureADC();
     adcConversion();
 }
 
