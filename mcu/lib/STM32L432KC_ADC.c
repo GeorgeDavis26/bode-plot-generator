@@ -1,6 +1,10 @@
 // STM32L432KC_ADC.c
 // Source code for ADC1 functions
 
+#include <stdio.h>
+#include <stdint.h>
+#include <stm32l432xx.h>
+#include "STM32L432KC.h"
 #include "STM32L432KC_ADC.h"
 #include "STM32L432KC_TIM.h"
 
@@ -40,3 +44,54 @@ void configureADC(void) {
     ADC1->CR |= ADC_CR_ADEN;
     while (ADC1->ISR & ADC_ISR_ADRDY);
 }
+
+void config(void) {
+    configureFlash();
+    configureClock();
+
+    gpioEnable(GPIO_PORT_B);
+    gpioEnable(GPIO_PORT_A);
+    
+    pinMode(GPIO_LED, GPIO_OUTPUT);
+    pinMode(GPIO_ADC1, GPIO_ANALOG);
+
+    RCC->APB2ENR |= (RCC_APB2ENR_TIM15EN);
+    initTIM(TIM15);
+    
+    configureADC();
+}
+
+void adcConversion(void)
+{
+    for (int j = 0; j < NUM_FREQUENCIES; j++) {
+        //if the frequencey changes then do this 
+        //while(!FREQ_GPIO); //wait for a new frequency to be set
+        for (int i = 0; i < NUM_SAMPLES; i++) {
+            ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+            ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+            while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+            adcBuffer[j][i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+        }
+        ADC1->CR |= ADC_CR_ADSTP;            // ask hardware to stop
+        while (ADC1->CR & ADC_CR_ADSTP);     // wait for it to actually stop
+    }
+}
+
+int adc(void){
+    config();
+    adcConversion();
+}
+
+    /*
+    while(1){
+        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+        uint16_t VREFINT_DATA = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC;
+        float voltage = 3*(VREFINT_DATA/(4095.0));
+        printf("ADC Voltage: ");
+        printf("%d ", VREFINT_DATA);
+        printf("%f", voltage);
+        printf("\n");
+    }
+*/

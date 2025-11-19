@@ -29,6 +29,17 @@
 #define ADC_SAMPLETIME_247CYCLES_5  6 // 247.5 ADC clock cycles
 #define ADC_SAMPLETIME_640CYCLES_5  7 // 640.5 ADC clock cycles
 
+#define GPIO_ADC1 PA2 //ADC1_IN7
+#define GPIO_LED PA8 //DEBUG LED
+
+#define LED_HIGH 1
+#define LED_LOW 0
+
+#define NUM_SAMPLES 1000
+#define NUM_FREQUENCIES 10
+
+
+uint16_t adcBuffer[NUM_FREQUENCIES][NUM_SAMPLES];
 ///////////////////////////////////////////////////////////////////////////////
 // Function prototypes
 ///////////////////////////////////////////////////////////////////////////////
