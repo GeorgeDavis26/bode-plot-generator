@@ -154,9 +154,7 @@ int main(void) {
       while(!(USART->ISR & USART_ISR_RXNE));
       request[charIndex++] = readChar(USART);
     }
-
     sendString(USART, webpageStart);
-  
     //sendString(USART, webpageEnd);
   }
 }

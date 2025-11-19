@@ -66,6 +66,7 @@ void adcConversion(void)
     for (int j = 0; j < NUM_FREQUENCIES; j++) {
         //if the frequencey changes then do this 
         //while(!FREQ_GPIO); //wait for a new frequency to be set
+        uint16_t adcBuffer[NUM_FREQUENCIES][NUM_SAMPLES];
         for (int i = 0; i < NUM_SAMPLES; i++) {
             ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
             ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
