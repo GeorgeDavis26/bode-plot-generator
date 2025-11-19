@@ -5,3 +5,5 @@
 *.jlink
 
 .DS_store
+.new_segger_proj/*
+.segger/*
