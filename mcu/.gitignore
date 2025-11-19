@@ -5,5 +5,3 @@
 *.jlink
 
 .DS_store
-
-segger/*

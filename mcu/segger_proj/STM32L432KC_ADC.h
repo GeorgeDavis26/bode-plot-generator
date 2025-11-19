@@ -16,7 +16,9 @@
 #define EIGHT_BIT_ADC1_RES   2 // Value to set ADC_CFG_RES[1:0] to 8-bit resolution
 #define SIX_BIT_ADC1_RES     3 // Value to set ADC_CFG_RES[1:0] to 6-bit resolution
 
-#define ADC1_IN10 10 //PA5 or ADC1_IN10
+#define ADC1_IN7 7 //PA5 or ADC1_IN10
+
+#define SYSCLK_SEL_ADC 3 // System clock selected as ADCs clock
 
 #define ADC_SAMPLETIME_2CYCLES_5    0 // 2.5 ADC clock cycles
 #define ADC_SAMPLETIME_6CYCLES_5    1 // 6.5 ADC clock cycles

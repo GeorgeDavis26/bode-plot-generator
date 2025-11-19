@@ -20,7 +20,7 @@ void configureADC(void) {
     while (!(ADC1->CR & ADC_CR_ADVREGEN));
 
     //Differential mode for calibration
-    ADC1->CR |= ADC_CR_ADCALDIF;
+    //ADC1->CR |= ADC_CR_ADCALDIF;
 
     //Run Calibration Protocol
     ADC1->CR |= ADC_CR_ADCAL;
@@ -39,14 +39,14 @@ void configureADC(void) {
     ADC1->CFGR |= _VAL2FLD(ADC_CFGR_RES, SIX_BIT_ADC1_RES);
 
     //ADC1 sample time register
-    //ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR2_SMP10, 2); //12.5 ADC1 clock cycles
+    ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR2_SMP7, ADC_SAMPLETIME_247CYCLES_5); //12.5 ADC1 clock cycles
     
     ///////////////////////// VREFINT TESTING /////////////////////////////
 
     // Enable VREFINT channel (internal Vref)
-    ADC1_COMMON->CCR |= ADC_CCR_VREFEN;
+    //ADC1_COMMON->CCR |= ADC_CCR_VREFEN;
     //ADC1 sample time register for channel 0 
-    ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR1_SMP0, 2); //12.5 ADC1 clock cycles
+    //ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR1_SMP0, 2); //12.5 ADC1 clock cycles
 
     //////////////////////////////////////////////////////////////////////
 
@@ -58,13 +58,13 @@ void configureADC(void) {
     ADC1->SQR1 |= _VAL2FLD(ADC_SQR1_L, 0); //1 conversion
 
     ADC1->SQR1 &= ~ADC_SQR1_SQ1;
-    //ADC1->SQR1 |= _VAL2FLD(ADC_SQR1_SQ1, ADC1_IN10); //1st conversion regular sequence to IN10
+    ADC1->SQR1 |= _VAL2FLD(ADC_SQR1_SQ1, ADC1_IN7); //1st conversion regular sequence to IN7
 
 
     ///////////////////////// VREFINT TESTING /////////////////////////////
 
     //Set channel as the first conversion in the sequence
-    ADC1->SQR1 |= _VAL2FLD(ADC_SQR1_SQ1, 0); //1st conversion regular sequence to IN0 (VREFINT)
+    //ADC1->SQR1 |= _VAL2FLD(ADC_SQR1_SQ1, 0); //1st conversion regular sequence to IN0 (VREFINT)
 
     //////////////////////////////////////////////////////////////////////
 
