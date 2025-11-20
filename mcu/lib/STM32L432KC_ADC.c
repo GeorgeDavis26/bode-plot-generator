@@ -45,21 +45,32 @@ void configureADC(void) {
     while (ADC1->ISR & ADC_ISR_ADRDY);
 }
 
-void adcConversion(void)
-{
-    for (int j = 0; j < NUM_FREQUENCIES; j++) {
-        //if the frequencey changes then do this 
-        //while(!FREQ_GPIO); //wait for a new frequency to be set
-        uint16_t adcBuffer[NUM_FREQUENCIES][NUM_SAMPLES];
-        for (int i = 0; i < NUM_SAMPLES; i++) {
-            ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
-            ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
-            while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
-            adcBuffer[j][i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
-        }
-        ADC1->CR |= ADC_CR_ADSTP;            // ask hardware to stop
-        while (ADC1->CR & ADC_CR_ADSTP);     // wait for it to actually stop
+// void adcConversion(void)
+// {
+//     for (int j = 0; j < NUM_FREQUENCIES; j++) {
+//         //if the frequencey changes then do this 
+//         //while(!FREQ_GPIO); //wait for a new frequency to be set
+//         uint16_t adcBuffer[NUM_FREQUENCIES][NUM_SAMPLES];
+//         for (int i = 0; i < NUM_SAMPLES; i++) {
+//             ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+//             ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+//             while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+//             adcBuffer[j][i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+//         }
+//         ADC1->CR |= ADC_CR_ADSTP;            // ask hardware to stop
+//         while (ADC1->CR & ADC_CR_ADSTP);     // wait for it to actually stop
+//     }
+// }
+
+void adcConversion(uint16_t* buffer, int num_samples) {
+    for (int i = 0; i < num_samples; i++) {
+        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+        buffer[i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
     }
+    ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
+    while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
 }
 
 int adc(void){
