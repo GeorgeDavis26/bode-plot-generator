@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Bode Plot</title>
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         canvas {
@@ -11,19 +12,20 @@
 </head>
 
 <body>
-
     <h1>Bode Plot</h1>
     <canvas id="plot" width="600" height="400"></canvas>
 
     <script>
 
-        function plot_2D(data) {
+        function plot_2D(adc_data) {
             const canvas = document.getElementById("plot");
             const ctx = canvas.getContext("2d");
 
             const width = canvas.width;
             const height = canvas.height;
 
+            const data = new Array(adc_data.length);
+            for (let i = 0; i < data.length; i++) {data[i] = (3.29483 * adc_data[i]) / 4095.0;}
             const margin = 70;
             const x0 = margin;
             const y0 = height - margin;
@@ -187,9 +189,7 @@
             }
             ctx.stroke();
         }
-
-        //const data = [0, 0.3090169944, 0.5877852523, 0.8090169944, 0.9510565163, 1, 0.9510565163, 0.8090169944, 0.5877852523, 0.3090169944, 0, -0.3090169944, -0.5877852523, -0.8090169944, -0.9510565163, -1, -0.9510565163, -0.8090169944, -0.5877852523, -0.3090169944, 0, 0.3090169944, 0.5877852523, 0.8090169944, 0.9510565163, 1, 0.9510565163, 0.8090169944, 0.5877852523, 0.3090169944, 0, -0.3090169944, -0.5877852523, -0.8090169944, -0.9510565163, -1, -0.9510565163, -0.8090169944, -0.5877852523, -0.3090169944, 0];
-        const data = /* ADC Data */[];
+        const data = [4000,1243,2833];
 
         plot_2D(data);
 
