@@ -30,7 +30,7 @@ void configureADC(void) {
     ADC1->CFGR &= ~ADC_CFGR_RES;    //Data Resolution
     ADC1->CFGR |= _VAL2FLD(ADC_CFGR_RES, TWELVE_BIT_ADC1_RES);
 
-    ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR1_SMP7, ADC_SAMPLETIME_247CYCLES_5); //ADC1 sample time register 246.5 ADC1 clock cycles
+    ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR1_SMP7, ADC_SAMPLETIME_24CYCLES_5); //ADC1 sample time register 246.5 ADC1 clock cycles
 
     ADC1->CFGR &= ~ADC_CFGR_CONT;    //single conversion mode for regular conversions
 
@@ -73,10 +73,6 @@ void adcConversion(uint16_t* buffer, int num_samples) {
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
 }
 
-int adc(void){
-    configureADC();
-    adcConversion();
-}
 
     /*
     while(1){

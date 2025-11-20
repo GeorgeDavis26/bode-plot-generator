@@ -18,6 +18,7 @@
 #include "STM32L432KC_FLASH.h"
 #include "STM32L432KC_ADC.h"
 #include "STM32L432KC_USART.h"
+
 // Global defines
 
 #define HSI_FREQ 16000000 // HSI clock is 16 MHz

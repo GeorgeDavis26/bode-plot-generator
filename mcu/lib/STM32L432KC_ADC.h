@@ -16,6 +16,11 @@
 #define EIGHT_BIT_ADC1_RES   2 // Value to set ADC_CFG_RES[1:0] to 8-bit resolution
 #define SIX_BIT_ADC1_RES     3 // Value to set ADC_CFG_RES[1:0] to 6-bit resolution
 
+#define TWELVE_BIT_ADC1_RES_SCALAR  (2e11)*1.0
+#define TEN_BIT_ADC1_RES_SCALAR     (2e9)*1.0
+#define EIGHT_BIT_ADC1_RES_SCALAR   (2e7)*1.0
+#define SIX_BIT_ADC1_RES_SCALAR     (2e5)*1.0
+
 #define ADC1_IN7 7 //PA2 or ADC1_IN7
 
 #define SYSCLK_SEL_ADC 3 // System clock selected as ADCs clock
@@ -29,14 +34,9 @@
 #define ADC_SAMPLETIME_247CYCLES_5  6 // 247.5 ADC clock cycles
 #define ADC_SAMPLETIME_640CYCLES_5  7 // 640.5 ADC clock cycles
 
-#define GPIO_ADC1 PA2 //ADC1_IN7
-#define GPIO_LED PA8 //DEBUG LED
-
 #define LED_HIGH 1
 #define LED_LOW 0
 
-#define NUM_SAMPLES 1000
-#define NUM_FREQUENCIES 10
 
 
 //uint16_t adcBuffer[NUM_FREQUENCIES][NUM_SAMPLES];
@@ -45,5 +45,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 void configureADC(void);
+void adcConversion(uint16_t* buffer, int num_samples);
 
 #endif

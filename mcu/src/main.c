@@ -9,10 +9,8 @@ Date: 9/14/19
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "main.h"
 
-#define LED_PIN PB3
-#define BUFF_LEN 32
-#define NUM_SAMPLES 1000
 
 //determines whether a given character sequence is in a char array request, returning 1 if present, -1 if not present
 int inString(char request[], char des[]) {
@@ -20,55 +18,14 @@ int inString(char request[], char des[]) {
 	return -1;
 }
 
-/////////////////////////////////////////////////////////////////
-// Solution Functions
-/////////////////////////////////////////////////////////////////
-
-// int main(void) {
-  
-//   configureFlash();
-//   configureClock();
-
-//   RCC->APB2ENR |= (RCC_APB2ENR_TIM15EN);
-//   initTIM(TIM15);
-
-//   gpioEnable(GPIO_PORT_A);
-//   gpioEnable(GPIO_PORT_B);
-//   gpioEnable(GPIO_PORT_C);
-
-//   configureADC();
-
-//   initTIM(TIM15);
-//   pinMode(GPIO_LED, GPIO_OUTPUT);
-//   pinMode(GPIO_ADC1, GPIO_ANALOG);
-  
-//   USART_TypeDef * USART = initUSART(USART1_ID, 125000);
-
-//   while(1) {
-//     // Receive web request from the ESP
-//     char request[BUFF_LEN] = "                  "; // initialize to known value
-//     int charIndex = 0;
-  
-//     // Keep going until you get end of line character
-//     while(inString(request, "\n") == -1) {
-//       // Wait for a complete request to be transmitted before processing
-//       while(!(USART->ISR & USART_ISR_RXNE));
-//       request[charIndex++] = readChar(USART);
-//     }
-
-//     sendString(USART, webpageStart);
-  
-//     sendString(USART, webpageEnd);
-//   }
-// }
-
-int main(void) {
-  
+void config(void){
   configureFlash();
   configureClock();
 
-  RCC->APB2ENR |= (RCC_APB2ENR_TIM15EN);
-  initTIM(TIM15);
+  RCC->APB2ENR |= (RCC_APB2ENR_TIM15EN); //MICRO TIM
+  RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN; //MILLI TIM
+  initTIM_milli(MILLI_TIM);
+  initTIM_micro(MICRO_TIM);
 
   gpioEnable(GPIO_PORT_A);
   gpioEnable(GPIO_PORT_B);
@@ -76,16 +33,65 @@ int main(void) {
 
   configureADC();
 
+  pinMode(GPIO_BUTTON, GPIO_INPUT);
+  GPIOA->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD4, 0b01); // Set PA4 (GPIO_BUTTON) as pull-up
   pinMode(GPIO_LED, GPIO_OUTPUT);
   pinMode(GPIO_ADC1, GPIO_ANALOG);
-  
+
+};
+
+
+int main(void) {
+  config();
+
+  int volatile cur_button_state = digitalRead(GPIO_BUTTON);
+  int volatile led_state = 0;
+  int volatile prev_button_state = cur_button_state;
+
+  int i=0;
+  uint16_t adc_samples[NUM_FREQUENCIES][NUM_SAMPLES];
+  float untruncated_voltages[NUM_FREQUENCIES][NUM_SAMPLES];
+  float voltages[NUM_FREQUENCIES][NUM_SAMPLES];
+
   USART_TypeDef * USART = initUSART(USART1_ID, 125000);
 
-  // Buffer to hold our ADC readings
-  uint16_t adc_samples[NUM_SAMPLES];
+  // char adc_data_string[NUM_SAMPLES * NUM_FREQUENCIES];
+  char adc_data_string[(NUM_SAMPLES * NUM_FREQUENCIES * 6) + 3];
+
+
+  while(i < NUM_FREQUENCIES){
+
+      prev_button_state = cur_button_state;
+      cur_button_state = digitalRead(GPIO_BUTTON);
+
+      if ((prev_button_state == 1) && (cur_button_state == 0)) {
+          led_state = !led_state;
+          digitalWrite(GPIO_LED, led_state);
+          adcConversion(adc_samples[i], NUM_SAMPLES);
+          i++;
+      }
+      delay_millis(MILLI_TIM, 200);
+  };
+
+  char temp_buffer[20];
+  adc_data_string[0] = '\0'; // Initialize to empty string
   
-  // A larger buffer to format the data into a string
-  char adc_data_string[NUM_SAMPLES * 6];
+  strcat(adc_data_string, "["); // beginning of array
+
+  for(int x = 0; x < NUM_FREQUENCIES; x++) {
+    for(int y = 0; y < NUM_SAMPLES; y++) {
+      //calibrate voltages
+      untruncated_voltages[x][y] = 3.29483*adc_samples[x][y]/(4095.0);
+      voltages[x][y] = ((int) (untruncated_voltages[x][y]*1000.0)) / 1000.0f;
+      //convert voltages to a string
+      sprintf(temp_buffer, "%.3f", voltages[x][y]); // Convert float to string with 3 decimal places
+      if (!(x == NUM_FREQUENCIES - 1 && y == NUM_SAMPLES - 1)) {
+        strcat(adc_data_string, ","); // Add comma between values, but not after the last one.
+      }
+    }
+  }
+
+  strcat(adc_data_string, "]"); // End of array    
 
   while(1) {
     // Receive web request from the ESP
@@ -95,21 +101,6 @@ int main(void) {
       while(!(USART->ISR & USART_ISR_RXNE));
       request[charIndex++] = readChar(USART);
     }
-
-    // Collect data with ADC
-    adcConversion(adc_samples, NUM_SAMPLES);
-
-    // Format the data into a JavaScript array string: "[val1,val2,val3,...]"
-    char temp_buffer[10];
-    strcpy(adc_data_string, "["); // Start of array
-    for(int i = 0; i < NUM_SAMPLES; i++) {
-        sprintf(temp_buffer, "%u", adc_samples[i]); // Convert integer to string
-        strcat(adc_data_string, temp_buffer);
-        if (i < NUM_SAMPLES - 1) {
-            strcat(adc_data_string, ","); // Add comma between values
-        }
-    }
-    strcat(adc_data_string, "]"); // End of array
 
     // Send data to webpage
     sendString(USART, webpageStart);
