@@ -79,15 +79,8 @@ int main(void) {
 
   for(int x = 0; x < NUM_FREQUENCIES; x++) {
     for(int y = 0; y < NUM_SAMPLES; y++) {
-      //calibrate voltages
-      /*
-      //untruncated_voltages[x][y] = 3.29483*adc_samples[x][y]/(4095.0);
-      //voltages[x][y] = ((int) (untruncated_voltages[x][y]*1000.0)) / 1000.0f;
-      //convert voltages to a string
-      */
       sprintf(temp_buffer, "%u", adc_samples[x][y]); // Convert float to string with 3 decimal places
       strcat(adc_data_string, temp_buffer); 
-
       if (!(x == NUM_FREQUENCIES - 1 && y == NUM_SAMPLES - 1)) {
         strcat(adc_data_string, ","); // Add comma between values, but not after the last one.
       }
