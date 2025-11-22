@@ -27,8 +27,8 @@ module sweep_controller # (
 ) (
     input logic                   clk,
     input logic                   reset,            // Active low reset
-    output logic [PHASE_WIDTH-1:0] phase_inc,
-    output logic [DAC_WIDTH-1:0]  dac_out
+    output logic [DAC_WIDTH-1:0]  dac_out,
+    output logic                  sweep_done
 );
 
     // FSM States
@@ -61,7 +61,7 @@ module sweep_controller # (
 	end
 	
 	// logic for control signals
-    always_ff @(posedge clk or negedge reset) begin
+    always_ff @(posedge clk) begin
         if (!reset) begin
             phase_inc_reg <= PHASE_INC_MIN;
             sample_counter <= 0;
@@ -122,6 +122,6 @@ module sweep_controller # (
     end
 
     // Output Logic
-    assign phase_inc = phase_inc_reg;
+    assign sweep_done = (state == DONE);
 
 endmodule

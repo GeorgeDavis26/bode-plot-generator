@@ -17,6 +17,11 @@ module dds_dac # (
     parameter int    PHASE_WIDTH = 32,              // Width phase accumulator
     parameter int    FULL_WAVE = 256,               // Size of full sine wave
     parameter        LUT_FILE = "dds_lut.txt"       // ROM for LUT
+
+    parameter int    SAMPLES_PER_FREQ = 1024,      // Number of samples per frequency
+    parameter int    PHASE_INC_MIN = 8947,         // Minimum phase increment (~100 Hz)
+    parameter int    PHASE_INC_MAX = 89478485,     // Maximum phase increment (~1 MHz)
+    parameter int    PHASE_INC_STEP = 8947         // Step size for phase increment (~100 Hz steps)
 ) (
     input logic                   clk,
     input logic                   reset,            // active low reset
@@ -28,17 +33,21 @@ module dds_dac # (
 // Connecting DDS output to dac_data
 wire [DAC_WIDTH-1:0] dac_out;
 
-dds #(
+sweep_controller #(
     .DAC_WIDTH(DAC_WIDTH),
     .PHASE_WIDTH(PHASE_WIDTH),
     .FULL_WAVE(FULL_WAVE),
-    .LUT_FILE(LUT_FILE)
-) dds_inst (
+    .LUT_FILE(LUT_FILE),
+    .SAMPLES_PER_FREQ(SAMPLES_PER_FREQ),
+    .PHASE_INC_MIN(PHASE_INC_MIN),
+    .PHASE_INC_MAX(PHASE_INC_MAX),
+    .PHASE_INC_STEP(PHASE_INC_STEP)
+) sweep_control (
     .clk(clk),
     .reset(reset),
     .phase_inc(phase_inc),
     .dac_out(dac_out)
-)
+);
 
 // Connecting DDS output to dac_data
 assign dac_data = dac_out;

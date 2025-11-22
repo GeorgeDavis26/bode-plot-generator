@@ -26,8 +26,8 @@ module sweep_controller_tb;
     // Signals
     logic                   clk;
     logic                   reset;
-    logic [PHASE_WIDTH-1:0] phase_inc;
     logic [DAC_WIDTH-1:0]   dac_out;
+    logic                   sweep_done;
 
     // Instantiate sweep controller
     sweep_controller #(
@@ -42,8 +42,8 @@ module sweep_controller_tb;
         ) dut (
         .clk(clk),
         .reset(reset),
-        .phase_inc(phase_inc),
-        .dac_out(dac_out)
+        .dac_out(dac_out),
+        .sweep_done(sweep_done)
     );
 
     // Generate clock
