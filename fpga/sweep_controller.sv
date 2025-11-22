@@ -19,10 +19,11 @@ module sweep_controller # (
     parameter        LUT_FILE = "dds_lut.txt",     // ROM for LUT
 
     // Sweep Controller Parameters
+    // f_out = (phase_inc * f_clk) / (2^PHASE_WIDTH)
     parameter int    SAMPLES_PER_FREQ = 1024,      // Number of samples per frequency
-    parameter int    PHASE_INC_MIN = 1,            // Minimum phase increment
-    parameter int    PHASE_INC_MAX = 1,            // Maximum phase increment
-    parameter int    PHASE_INC_STEP = 1            // Step size for phase increment
+    parameter int    PHASE_INC_MIN = 8947,         // Minimum phase increment (~100 Hz)
+    parameter int    PHASE_INC_MAX = 89478485,     // Maximum phase increment (~1 MHz)
+    parameter int    PHASE_INC_STEP = 8947         // Step size for phase increment (~100 Hz steps)
 ) (
     input logic                   clk,
     input logic                   reset,            // Active low reset
@@ -77,10 +78,11 @@ module sweep_controller # (
                 NEXT_FREQ: begin
                     if (phase_inc_reg + PHASE_INC_STEP <= PHASE_INC_MAX) begin
                         phase_inc_reg <= phase_inc_reg + PHASE_INC_STEP;
-                    end else begin
-                        phase_inc_reg <= PHASE_INC_MIN; // Start Again
                     end
                     sample_counter <= 0;
+                end
+                DONE: begin
+                    // Stay in DONE
                 end
             endcase
         end
@@ -88,25 +90,36 @@ module sweep_controller # (
 
     // Next state logic
     always_comb begin
-        case (current_state)
+        case (state)
             IDLE: begin
-                if (reset) begin
-                    next_state = SET_FREQ;
+                if (!reset) begin
+                    nextstate = SET_FREQ;
+                end else begin
+                    nextstate = IDLE;
                 end
             end
             SET_FREQ: begin
-                next_state = COUNT_SAMPLES;
+                nextstate = COUNT_SAMPLES;
             end
             COUNT_SAMPLES: begin
                 if (sample_counter >= SAMPLES_PER_FREQ) begin
-                    next_state = NEXT_FREQ;
+                    nextstate = NEXT_FREQ;
+                end else begin
+                    nextstate = COUNT_SAMPLES;
                 end
             end
             NEXT_FREQ: begin
-                if() begin
-                    next_state = DONE
+                if (phase_inc_reg + PHASE_INC_STEP <= PHASE_INC_MAX) begin
+                    nextstate = SET_FREQ;
                 end else begin
-                    next_state = SET_FREQ;
+                    nextstate = DONE;
+                end
+            end
+            DONE: begin
+                nextstate = DONE;  // Stay in DONE until reset
+            end
+            default: begin
+                nextstate = state;
             end
         endcase
     end
