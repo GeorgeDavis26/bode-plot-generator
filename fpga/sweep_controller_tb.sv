@@ -75,3 +75,5 @@ module sweep_controller_tb;
         $display("Test completed");
         $finish;
     end
+
+endmodule

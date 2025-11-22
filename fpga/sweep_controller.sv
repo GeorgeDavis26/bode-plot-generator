@@ -71,7 +71,8 @@ module sweep_controller # (
                     phase_inc_reg <= PHASE_INC_MIN;
                     sample_counter <= 0;
                 end
-                SET_FREQ:
+                SET_FREQ: begin
+                end
                 COUNT_SAMPLES: begin
                     sample_counter <= sample_counter + 1;
                 end
@@ -92,11 +93,7 @@ module sweep_controller # (
     always_comb begin
         case (state)
             IDLE: begin
-                if (!reset) begin
-                    nextstate = SET_FREQ;
-                end else begin
-                    nextstate = IDLE;
-                end
+                nextstate = SET_FREQ;
             end
             SET_FREQ: begin
                 nextstate = COUNT_SAMPLES;
