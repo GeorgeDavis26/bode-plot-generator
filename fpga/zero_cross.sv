@@ -25,7 +25,6 @@ module zero_cross #(
     
     // add some range to avoid noise around the zero crossings
     assign dac_lower = DAC_MIDPOINT - 2;
-    assign dac_upper = DAC_MIDPOINT + 2;
 
     // Zero crossing detection
     always_ff @(posedge clk) begin
@@ -36,7 +35,7 @@ module zero_cross #(
             dac_prev <= dac_out;
             
             // Detect rising zero crossing
-            if (dac_prev < dac_lower && dac_out > dac_upper) begin
+            if ((dac_prev <= dac_lower) && (dac_out >= dac_lower)) begin
                 zero_detected <= 1;
             end else begin
                 zero_detected <= 0;
