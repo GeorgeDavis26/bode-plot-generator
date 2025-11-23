@@ -40,6 +40,44 @@ void config(void){
 
 };
 
+char array2String(uint16_t array){
+  char temp_buffer[20];
+  string[0] = '\0'; // Initialize to empty string
+  strcat(string, "["); // beginning of array
+
+  for(int x = 0; x < NUM_FREQUENCIES; x++) {
+    for(int y = 0; y < NUM_SAMPLES; y++) {
+      sprintf(temp_buffer, "%u", array[x][y]);
+      strcat(string, temp_buffer); 
+      if (!(x == NUM_FREQUENCIES - 1 && y == NUM_SAMPLES - 1)) {
+        strcat(string, ","); // Add comma between values, but not after the last one.
+      }
+    }
+  }
+  strcat(string, "]"); // End of array    
+  return string;
+}
+
+double amplitudeExtract(const uint16_t *sine_array, int res_bits){
+    // compute DC offset (mean)
+    double sum = 0.0;
+    for (int i = 0; i < NUM_SAMPLES ; i++) sum += sine_array[i];
+    double mean = sum / NUM_SAMPLES;
+
+    // compute sum of the square of each value
+    double square = 0.0;
+    for (size_t i=0;i<n;i++) {
+        double v = (double)sine_array[i] - mean;
+        square += v * v;
+    }
+    // find the average of the squared values and take the sqrt
+    double rms_avg = sqrt(square / NUM_SAMPLES);
+
+    // compute peak to peak amplitude
+    double peak_counts = rms_counts * sqrt(2.0);
+    double scale = vref / ((1u << res_bits) - 1u);
+    return (double)(peak_counts * scale);
+}
 
 int main(void) {
   config();
@@ -55,7 +93,7 @@ int main(void) {
 
   // char adc_data_string[NUM_SAMPLES * NUM_FREQUENCIES];
   char adc_data_string[(NUM_SAMPLES * NUM_FREQUENCIES * 6) + 3];
-
+  //test
 
   while(i < NUM_FREQUENCIES){
 
@@ -71,23 +109,9 @@ int main(void) {
       delay_millis(MILLI_TIM, 200);
   };
 
-  char temp_buffer[20];
+  amplitude = amplitudeExtract(adc_samples);
 
-  adc_data_string[0] = '\0'; // Initialize to empty string
-  
-  strcat(adc_data_string, "["); // beginning of array
-
-  for(int x = 0; x < NUM_FREQUENCIES; x++) {
-    for(int y = 0; y < NUM_SAMPLES; y++) {
-      sprintf(temp_buffer, "%u", adc_samples[x][y]); // Convert float to string with 3 decimal places
-      strcat(adc_data_string, temp_buffer); 
-      if (!(x == NUM_FREQUENCIES - 1 && y == NUM_SAMPLES - 1)) {
-        strcat(adc_data_string, ","); // Add comma between values, but not after the last one.
-      }
-    }
-  }
-
-  strcat(adc_data_string, "]"); // End of array    
+  adc_data_string = array2String(adc_samples);
 
   while(1) {
     // Receive web request from the ESP

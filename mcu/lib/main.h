@@ -22,7 +22,7 @@
 /*-------------------------MACROS-------------------------*/
 
 #define BUFF_LEN 32
-#define NUM_SAMPLES 600
+#define NUM_SAMPLES 1500
 #define NUM_FREQUENCIES 2
 
 /*-----------------CONST WEBPAGE HTML STRINGS--------------------*/
@@ -35,7 +35,7 @@ char* webpageStart = "<!DOCTYPE html><html><head><title>George and Matthews O-Sc
 char* plot =
 "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">"
 "<style>canvas { border: 1px solid #333; }</style></head>"
-"<canvas id=\"plot\" width=\"500\" height=\"400\"></canvas>"
+"<canvas id=\"plot\" width=\"1000\" height=\"400\"></canvas>"
 "<script>"
 "function plot_2D(adc_data) {"
     "const canvas = document.getElementById(\"plot\");"
