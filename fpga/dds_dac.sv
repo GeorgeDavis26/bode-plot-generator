@@ -16,7 +16,7 @@ module dds_dac # (
     parameter int    DAC_WIDTH = 8,                 // Bit width for external DAC
     parameter int    PHASE_WIDTH = 32,              // Width phase accumulator
     parameter int    FULL_WAVE = 256,               // Size of full sine wave
-    parameter        LUT_FILE = "dds_lut.txt"       // ROM for LUT
+    parameter        LUT_FILE = "dds_lut.txt",       // ROM for LUT
 
     parameter int    SAMPLES_PER_FREQ = 1024,      // Number of samples per frequency
     parameter int    PHASE_INC_MIN = 8947,         // Minimum phase increment (~100 Hz)
@@ -25,13 +25,15 @@ module dds_dac # (
 ) (
     input logic                   clk,
     input logic                   reset,            // active low reset
-    input logic [PHASE_WIDTH-1:0] phase_inc,
     output logic [DAC_WIDTH-1:0]  dac_data,
     output logic                  dac_wr            // active low WR for DAC
 );
 
 // Connecting DDS output to dac_data
 wire [DAC_WIDTH-1:0] dac_out;
+
+// high frequency oscillator defaults to 48 MHz
+HSOSC hf_osc (.CLKHFPU(1'b1), .CLKHFEN(1'b1), .CLKHF(int_osc));
 
 sweep_controller #(
     .DAC_WIDTH(DAC_WIDTH),
@@ -43,10 +45,10 @@ sweep_controller #(
     .PHASE_INC_MAX(PHASE_INC_MAX),
     .PHASE_INC_STEP(PHASE_INC_STEP)
 ) sweep_control (
-    .clk(clk),
+    .clk(int_osc),
     .reset(reset),
-    .phase_inc(phase_inc),
-    .dac_out(dac_out)
+    .dac_out(dac_out),
+    .sweep_done(sweep_done)
 );
 
 // Connecting DDS output to dac_data
@@ -54,11 +56,11 @@ assign dac_data = dac_out;
 
 // DAC Control signal
 logic dac_wr_reg = 1'b1;
-always_ff @(posedge clk) begin
+always_ff @(posedge int_osc) begin
     if (~reset) begin
         dac_wr_reg <= 1'b1;
     end else begin
-        dac_wr_reg <= ~dac_wr_reg
+        dac_wr_reg <= ~dac_wr_reg;
     end
 end
 
