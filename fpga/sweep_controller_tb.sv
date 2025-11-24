@@ -65,12 +65,14 @@ module sweep_controller_tb;
 
         #30;
         reset = 1;  // Active low reset
-        #100000000; // Run for a long time to see the frequency sweep
+        wait(sweep_done);
+        $display("1st sweep done");
 
         reset = 0;
         #30;
         reset = 1;
-        #100000000; // Run for a long time to see the frequency sweep again
+        wait(sweep_done);
+        $display("second sweep done");
 
         $display("Test completed");
         $finish;
