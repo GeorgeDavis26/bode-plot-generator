@@ -20,7 +20,7 @@ module zero_cross #(
 );
 
     logic [DAC_WIDTH-1:0] dac_prev;
-    logic [7:0] dac_lower, dac_upper;
+    logic [7:0] dac_lower;
     logic zero_detected;
     
     // add some range to avoid noise around the zero crossings
