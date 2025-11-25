@@ -19,9 +19,6 @@ module zero_cross_tb;
 
     // Use faster parameters for simulation
     localparam SAMPLES_PER_FREQ = 64;
-    // localparam PHASE_INC_MIN = 8947; 
-    // localparam PHASE_INC_MAX = 89478;  
-    // localparam PHASE_INC_STEP = 8947;
     localparam PHASE_INC_MIN = 10000000; 
     localparam PHASE_INC_MAX = 100000000;  
     localparam PHASE_INC_STEP = 100000;

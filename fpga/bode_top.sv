@@ -14,10 +14,10 @@ module bode_top # (
     parameter int    FULL_WAVE = 256,              // Size of full sine wave
     parameter        LUT_FILE = "dds_lut.txt"      // ROM for LUT
 
-    parameter int    SAMPLES_PER_FREQ = 1024,      // Number of samples per frequency
-    parameter int    PHASE_INC_MIN = 8947,         // Minimum phase increment (~100 Hz)
-    parameter int    PHASE_INC_MAX = 89478485,     // Maximum phase increment (~1 MHz)
-    parameter int    PHASE_INC_STEP = 8947         // Step size for phase increment (~100 Hz steps)
+    parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
+    parameter int    PHASE_INC_MIN = 35791,         // Minimum phase increment (~100 Hz)
+    parameter int    PHASE_INC_MAX = 357913941,     // Maximum phase increment (~1 MHz)
+    parameter int    PHASE_INC_STEP = 35791         // Step size for phase increment (~100 Hz steps)
 
     parameter DAC_MIDPOINT = 8'h80                 // midpoint is 128
 ) (

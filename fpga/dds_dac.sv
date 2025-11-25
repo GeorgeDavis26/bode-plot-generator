@@ -17,23 +17,30 @@ module dds_dac # (
     parameter int    PHASE_WIDTH = 32,              // Width phase accumulator
     parameter int    FULL_WAVE = 256,               // Size of full sine wave
     parameter        LUT_FILE = "dds_lut.txt",       // ROM for LUT
+	parameter DAC_MIDPOINT = 8'h80,
 
-    parameter int    SAMPLES_PER_FREQ = 1024,      // Number of samples per frequency
-    parameter int    PHASE_INC_MIN = 8947,         // Minimum phase increment (~100 Hz)
-    parameter int    PHASE_INC_MAX = 89478485,     // Maximum phase increment (~1 MHz)
-    parameter int    PHASE_INC_STEP = 8947         // Step size for phase increment (~100 Hz steps)
+
+    parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
+    // parameter int    PHASE_INC_MIN = 35791,         // Minimum phase increment (~100 Hz)
+    // parameter int    PHASE_INC_MAX = 357913941,     // Maximum phase increment (~1 MHz)
+    // parameter int    PHASE_INC_STEP = 35791         // Step size for phase increment (~100 Hz steps)
+    parameter int    PHASE_INC_MIN = 35791,         // Minimum phase increment 100
+    parameter int    PHASE_INC_MAX = 35791,     // Maximum phase increment 100 Hz
+    parameter int    PHASE_INC_STEP = 0         // Step size for phase increment 
 ) (
     input logic                   clk,
     input logic                   reset,            // active low reset
     output logic [DAC_WIDTH-1:0]  dac_data,
-    output logic                  dac_wr            // active low WR for DAC
+    output logic                  dac_wr,            // active low WR for DAC
+	output logic                  zero_detected,
+	output logic 				  int_osc
 );
 
 // Connecting DDS output to dac_data
 wire [DAC_WIDTH-1:0] dac_out;
 
-// high frequency oscillator defaults to 48 MHz
-HSOSC hf_osc (.CLKHFPU(1'b1), .CLKHFEN(1'b1), .CLKHF(int_osc));
+// high frequency oscillator at 12 MHz, suitable for DAC update rate
+HSOSC #(.CLKHF_DIV ("0b10")) hf_osc (.CLKHFPU(1'b1), .CLKHFEN(1'b1), .CLKHF(int_osc));
 
 sweep_controller #(
     .DAC_WIDTH(DAC_WIDTH),
@@ -50,6 +57,17 @@ sweep_controller #(
     .dac_out(dac_out),
     .sweep_done(sweep_done)
 );
+
+// Zero cross detection
+    zero_cross #(
+        .DAC_WIDTH(DAC_WIDTH),
+        .DAC_MIDPOINT(DAC_MIDPOINT)
+    ) zero_cross_detect (
+        .clk(int_osc),
+        .reset(reset),
+        .dac_out(dac_out),
+        .zero_cross(zero_detected)
+    );
 
 // Connecting DDS output to dac_data
 assign dac_data = dac_out;
