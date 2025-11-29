@@ -22,7 +22,7 @@ module sweep_controller # (
     // f_out = (phase_inc * f_clk) / (2^PHASE_WIDTH-1)
     parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
     parameter int    PHASE_INC_MIN = 35791,         // Minimum phase increment (~100 Hz)
-    parameter int    PHASE_INC_MAX = 357913941,     // Maximum phase increment (~1 MHz)
+    parameter int    PHASE_INC_MAX = 35791394,     // Maximum phase increment (~100 kHz)
     parameter int    PHASE_INC_STEP = 35791         // Step size for phase increment (~100 Hz steps)
 ) (
     input logic                   clk,
