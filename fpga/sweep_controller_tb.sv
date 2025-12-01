@@ -26,6 +26,7 @@ module sweep_controller_tb;
     // Signals
     logic                   clk;
     logic                   reset;
+    logic                   mcu_ready;
     logic [DAC_WIDTH-1:0]   dac_out;
     logic                   sweep_done;
 
@@ -42,6 +43,7 @@ module sweep_controller_tb;
         ) dut (
         .clk(clk),
         .reset(reset),
+        .mcu_ready(mcu_ready),
         .dac_out(dac_out),
         .sweep_done(sweep_done)
     );
@@ -62,6 +64,7 @@ module sweep_controller_tb;
         // Initialize Inputs
         clk = 0;
         reset = 0;
+        mcu_ready = 1;
 
         #30;
         reset = 1;  // Active low reset
