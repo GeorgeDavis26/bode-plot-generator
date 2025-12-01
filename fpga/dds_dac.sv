@@ -27,12 +27,17 @@ module dds_dac # (
     input logic                   clk,
     input logic                   reset,            // active low reset
     input logic                   mcu_ready,        // MCU ready for next frequency
+    input logic                   quarter_flag,
+    input logic                   half_flag,
     output logic [DAC_WIDTH-1:0]  dac_data,
     output logic                  dac_wr,           // active low WR for DAC
     output logic                  sweep_done,
-    output logic [DAC_WIDTH-1:0]  dac_out,         // Raw DDS output for monitoring
     output logic [PHASE_WIDTH-1:0] current_phase_inc  // Current phase increment for monitoring
 );
+
+    // Internal signals
+    logic [DAC_WIDTH-1:0] dac_out;                  // Unattenuated DDS output
+    logic [DAC_WIDTH-1:0] attenuated_dac_out;       // Attenuated DDS output
 
     // Sweep controller with integrated DDS
     sweep_controller #(
@@ -53,8 +58,26 @@ module dds_dac # (
         .phase_inc_reg(current_phase_inc)
     );
 
-    // Connect DDS output to DAC data
-    assign dac_data = dac_out;
+     // Amplitude control logic
+    always_comb begin
+        // Convert to signed for proper arithmetic around midpoint
+        logic signed [DAC_WIDTH:0] signed_amplitude;
+        logic signed [DAC_WIDTH:0] attenuated_amplitude;
+        
+        // Convert to signed relative to midpoint
+        signed_amplitude = $signed({1'b0, dac_out}) - $signed({1'b0, DAC_MIDPOINT});
+        
+        // Apply attenuation based on control flags
+        case ({quarter_flag, half_flag})
+            2'b00: attenuated_amplitude = signed_amplitude;           // Full amplitude
+            2'b01: attenuated_amplitude = signed_amplitude >>> 1;     // Half amplitude
+            2'b10: attenuated_amplitude = signed_amplitude >>> 2;     // Quarter amplitude
+            2'b11: attenuated_amplitude = signed_amplitude;           // Full amplitude
+        endcase
+        
+        // Convert back to unsigned and add midpoint offset
+        attenuated_dac_out = $unsigned(attenuated_amplitude + $signed({1'b0, DAC_MIDPOINT}));
+    end
 
     // DAC Write signal - toggle every clock for continuous updates
     logic dac_wr_reg = 1'b1;
@@ -66,6 +89,8 @@ module dds_dac # (
         end
     end
 
+    // Output Logic
     assign dac_wr = dac_wr_reg;
+    assign dac_data = attenuated_dac_out;
 
 endmodule

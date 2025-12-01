@@ -43,9 +43,7 @@ module bode_top #(
 );
 
     // Internal signals
-    logic [DAC_WIDTH-1:0] dac_out;                  // DDS output
     logic sweep_done;                               // Sweep completion from sweep controller
-    logic zero_detected;                            // Zero crossing detection
     logic [PHASE_WIDTH-1:0] current_phase_inc;     // Current phase increment for monitoring
 
     // Main DDS and DAC controller with sweep functionality
@@ -66,7 +64,6 @@ module bode_top #(
         .dac_data(dac_data),
         .dac_wr(dac_wr),
         .sweep_done(sweep_done),
-        .dac_out(dac_out),
         .current_phase_inc(current_phase_inc)
     );
 
@@ -78,7 +75,7 @@ module bode_top #(
     ) mcu_interface (
         .clk(clk),
         .reset(reset),
-        .dac_out(dac_out),
+        .dac_out(dac_data),
         .phase_inc(current_phase_inc),
         .sweep_done(sweep_done),
         .half_flag(half_flag),
