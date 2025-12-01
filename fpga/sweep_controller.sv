@@ -27,16 +27,21 @@ module sweep_controller # (
 ) (
     input logic                   clk,
     input logic                   reset,            // Active low reset
+    input logic                   mcu_ready,
     output logic [DAC_WIDTH-1:0]  dac_out,
     output logic                  sweep_done
 );
 
     // FSM States
-    typedef enum logic [2:0] {IDLE, SET_FREQ, COUNT_SAMPLES, NEXT_FREQ, DONE} statetype;
+    typedef enum logic [2:0] {IDLE, WAIT_MCU, SET_FREQ, COUNT_SAMPLES, NEXT_FREQ, DONE} statetype;
     statetype state, nextstate;
 
     logic [PHASE_WIDTH-1:0] phase_inc_reg;         // Current phase increment
     logic [31:0] sample_counter;                   // Counter for samples per frequency
+
+    // DDS output registers
+    logic [DAC_WIDTH-1:0] dac_out_reg;
+    logic [DAC_WIDTH-1:0] dds_out_reg;
 
     // DDS Instance
     dds #(
@@ -48,7 +53,7 @@ module sweep_controller # (
         .clk(clk),
         .reset(reset),
         .phase_inc(phase_inc_reg),
-        .dac_out(dac_out)
+        .dac_out(dds_out_reg)
     );
 
      // State register
@@ -65,11 +70,15 @@ module sweep_controller # (
         if (!reset) begin
             phase_inc_reg <= PHASE_INC_MIN;
             sample_counter <= 0;
+            dac_out_reg <= 8'h80;
         end else begin
             case (state)
                 IDLE: begin
                     phase_inc_reg <= PHASE_INC_MIN;
                     sample_counter <= 0;
+                end
+                WAIT_MCU: begin 
+                    // Waiting for MCU ready flag
                 end
                 SET_FREQ: begin
                 end
@@ -83,7 +92,8 @@ module sweep_controller # (
                     sample_counter <= 0;
                 end
                 DONE: begin
-                    // Stay in DONE
+                    // Stay in DONE and stop the sweep
+                    dac_out_reg <= 8'h80;
                 end
             endcase
         end
@@ -94,6 +104,13 @@ module sweep_controller # (
         case (state)
             IDLE: begin
                 nextstate = SET_FREQ;
+            end
+            WAIT_MCU: begin
+                if (mcu_ready) begin
+                    nextstate = SET_FREQ;
+                end else begin
+                    nextstate = WAIT_MCU;  // Stay and wait for MCU
+                end
             end
             SET_FREQ: begin
                 nextstate = COUNT_SAMPLES;
@@ -122,6 +139,7 @@ module sweep_controller # (
     end
 
     // Output Logic
+    assign dac_out = sweep_done ? dac_out_reg : dds_out_reg;
     assign sweep_done = (state == DONE);
 
 endmodule
