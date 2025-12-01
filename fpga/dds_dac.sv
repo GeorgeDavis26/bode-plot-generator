@@ -20,9 +20,9 @@ module dds_dac # (
     parameter        DAC_MIDPOINT = 8'h80,          // DAC midpoint
 
     parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
-    parameter int    PHASE_INC_MIN = 35791,         // Minimum phase increment (~100 Hz)
-    parameter int    PHASE_INC_MAX = 35791394,      // Maximum phase increment (~100 kHz)
-    parameter int    PHASE_INC_STEP = 35791         // Step size for phase increment (~100 Hz steps)
+    parameter int    PHASE_INC_MIN = 5369,          // Minimum phase increment (~100 Hz at 80MHz)
+    parameter int    PHASE_INC_MAX = 5368709,       // Maximum phase increment (~100 kHz at 80MHz)
+    parameter int    PHASE_INC_STEP = 5369          // Step size for phase increment (~100 Hz steps at 80MHz)
 ) (
     input logic                   clk,
     input logic                   reset,            // active low reset

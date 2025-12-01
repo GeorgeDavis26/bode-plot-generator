@@ -18,39 +18,35 @@ module bode_top #(
 
     // Sweep Controller Parameters
     parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
-    parameter int    PHASE_INC_MIN = 35791,         // Minimum phase increment (~100 Hz at 12MHz)
-    parameter int    PHASE_INC_MAX = 35791394,      // Maximum phase increment (~100 kHz at 12MHz)
-    parameter int    PHASE_INC_STEP = 35791         // Step size for phase increment (~100 Hz steps)
+    parameter int    PHASE_INC_MIN = 5369,          // Minimum phase increment (~100 Hz at 80MHz)
+    parameter int    PHASE_INC_MAX = 5368709,       // Maximum phase increment (~100 kHz at 80MHz)
+    parameter int    PHASE_INC_STEP = 5369          // Step size for phase increment (~100 Hz steps at 80MHz)
 ) (
-    input  logic clk,                               // External clock (if needed)
-    input  logic reset,                             // Active low reset
+    input  logic clk,                               // External clock (PIN B3 : 21)
+    input  logic reset,                             // Active low reset (PIN 9)
 
     // MCU Interface
-    input  logic mcu_ready,                         // MCU ready for next frequency
-    input  logic half_flag,                         // Half amplitude request from MCU
-    input  logic quarter_flag,                      // Quarter amplitude request from MCU
+    input  logic mcu_ready,                         // MCU ready for next frequency (PIN A10 : 23)
+    input  logic half_flag,                         // Half amplitude request from MCU (PIN A9 : 25)
+    input  logic quarter_flag,                      // Quarter amplitude request from MCU (PIN A5 : 26)
 
     // DAC Interface
-    output logic [DAC_WIDTH-1:0] dac_data,         // Data to DAC
+    output logic [DAC_WIDTH-1:0] dac_data,          // Data to DAC
     output logic dac_wr,                            // Write strobe to DAC (active low)
 
     // GPIO outputs to MCU
-    output logic zero_cross_gpio,                   // Zero crossing detected
-    output logic freq_change_gpio,                  // Frequency change notification
-    output logic sweep_done_gpio,                   // Sweep completion flag
-    output logic amp_gpio1,                         // Amplitude control GPIO 1
-    output logic amp_gpio2                          // Amplitude control GPIO 2
+    output logic zero_cross_gpio,                   // Zero crossing detected (PIN A6 : 27)
+    output logic freq_change_gpio,                  // Frequency change notification (PIN A11 : 20)
+    output logic sweep_done_gpio,                   // Sweep completion flag (PIN B5 : 10)
+    output logic amp_gpio1,                         // Amplitude control GPIO 1 (PIN B4 : 12)
+    output logic amp_gpio2                          // Amplitude control GPIO 2 (PIN B7 : 11) 
 );
 
     // Internal signals
-    logic int_osc;                                  // Internal 12MHz oscillator
     logic [DAC_WIDTH-1:0] dac_out;                  // DDS output
     logic sweep_done;                               // Sweep completion from sweep controller
     logic zero_detected;                            // Zero crossing detection
     logic [PHASE_WIDTH-1:0] current_phase_inc;     // Current phase increment for monitoring
-
-    // high frequency oscillator at 12 MHz, suitable for DAC update rate
-    HSOSC #(.CLKHF_DIV ("0b10")) hf_osc (.CLKHFPU(1'b1), .CLKHFEN(1'b1), .CLKHF(int_osc));
 
     // Main DDS and DAC controller with sweep functionality
     dds_dac #(
@@ -64,7 +60,7 @@ module bode_top #(
         .PHASE_INC_MAX(PHASE_INC_MAX),
         .PHASE_INC_STEP(PHASE_INC_STEP)
     ) dds_dac_inst (
-        .clk(int_osc),
+        .clk(clk),
         .reset(reset),
         .mcu_ready(mcu_ready),
         .dac_data(dac_data),
@@ -80,7 +76,7 @@ module bode_top #(
         .PHASE_WIDTH(PHASE_WIDTH),
         .DAC_MIDPOINT(DAC_MIDPOINT)
     ) mcu_interface (
-        .clk(int_osc),
+        .clk(clk),
         .reset(reset),
         .dac_out(dac_out),
         .phase_inc(current_phase_inc),
