@@ -23,7 +23,16 @@ module sweep_controller # (
     parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
     parameter int    PHASE_INC_MIN = 5369,          // Minimum phase increment (~100 Hz at 80MHz)
     parameter int    PHASE_INC_MAX = 5368709,       // Maximum phase increment (~100 kHz at 80MHz)
-    parameter int    PHASE_INC_STEP = 5369          // Step size for phase increment (~100 Hz steps at 80MHz)
+    
+    // Decade boundaries for phase increments
+    parameter int    PHASE_INC_1KHZ = 53687,        // 1 kHz boundary
+    parameter int    PHASE_INC_10KHZ = 536871,      // 10 kHz boundary
+    
+    // Step sizes for each decade
+    parameter int    PHASE_INC_STEP_100HZ = 5369,   // 100 Hz steps (100Hz to 1kHz)
+    parameter int    PHASE_INC_STEP_1KHZ = 53687,   // 1 kHz steps (1kHz to 10kHz)
+    parameter int    PHASE_INC_STEP_10KHZ = 536871  // 10 kHz steps (10kHz to 100kHz)
+) (
 ) (
     input logic                    clk,
     input logic                    reset,            // Active low reset
@@ -38,6 +47,7 @@ module sweep_controller # (
     statetype state, nextstate;
 
     logic [31:0] sample_counter;                   // Counter for samples per frequency
+    logic [PHASE_WIDTH-1:0] current_step_size;    // Current step size based on decade
 
     // DDS output registers
     logic [DAC_WIDTH-1:0] dac_out_reg;
@@ -55,6 +65,17 @@ module sweep_controller # (
         .phase_inc(phase_inc_reg),
         .dac_out(dds_out_reg)
     );
+
+     // Determine step size based on current frequency
+    always_comb begin
+        if (phase_inc_reg < PHASE_INC_1KHZ) begin
+            current_step_size = PHASE_INC_STEP_100HZ;
+        end else if (phase_inc_reg < PHASE_INC_10KHZ) begin
+            current_step_size = PHASE_INC_STEP_1KHZ;
+        end else begin
+            current_step_size = PHASE_INC_STEP_10KHZ;
+        end
+    end
 
     // State register
     always_ff @(posedge clk) begin
@@ -86,8 +107,8 @@ module sweep_controller # (
                     sample_counter <= sample_counter + 1;
                 end
                 NEXT_FREQ: begin
-                    if (phase_inc_reg + PHASE_INC_STEP <= PHASE_INC_MAX) begin
-                        phase_inc_reg <= phase_inc_reg + PHASE_INC_STEP;
+                    if (phase_inc_reg + current_step_size <= PHASE_INC_MAX) begin
+                        phase_inc_reg <= phase_inc_reg + current_step_size;
                     end
                     sample_counter <= 0;
                 end
@@ -123,8 +144,8 @@ module sweep_controller # (
                 end
             end
             NEXT_FREQ: begin
-                if (phase_inc_reg + PHASE_INC_STEP <= PHASE_INC_MAX) begin
-                    nextstate = SET_FREQ;
+                if (phase_inc_reg + current_step_size <= PHASE_INC_MAX) begin
+                    nextstate = WAIT_MCU;
                 end else begin
                     nextstate = DONE;
                 end

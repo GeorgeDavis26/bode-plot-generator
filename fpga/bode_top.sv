@@ -20,7 +20,15 @@ module bode_top #(
     parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
     parameter int    PHASE_INC_MIN = 5369,          // Minimum phase increment (~100 Hz at 80MHz)
     parameter int    PHASE_INC_MAX = 5368709,       // Maximum phase increment (~100 kHz at 80MHz)
-    parameter int    PHASE_INC_STEP = 5369          // Step size for phase increment (~100 Hz steps at 80MHz)
+    
+    // Decade boundaries for phase increments
+    parameter int    PHASE_INC_1KHZ = 53687,        // 1 kHz boundary
+    parameter int    PHASE_INC_10KHZ = 536871,      // 10 kHz boundary
+    
+    // Step sizes for each decade
+    parameter int    PHASE_INC_STEP_100HZ = 5369,   // 100 Hz steps (100Hz to 1kHz)
+    parameter int    PHASE_INC_STEP_1KHZ = 53687,   // 1 kHz steps (1kHz to 10kHz)
+    parameter int    PHASE_INC_STEP_10KHZ = 536871  // 10 kHz steps (10kHz to 100kHz)
 ) (
     input  logic clk,                               // External clock (PIN B3 : 21)
     input  logic reset,                             // Active low reset (PIN 9)
@@ -56,7 +64,11 @@ module bode_top #(
         .SAMPLES_PER_FREQ(SAMPLES_PER_FREQ),
         .PHASE_INC_MIN(PHASE_INC_MIN),
         .PHASE_INC_MAX(PHASE_INC_MAX),
-        .PHASE_INC_STEP(PHASE_INC_STEP)
+        .PHASE_INC_1KHZ(PHASE_INC_1KHZ),
+        .PHASE_INC_10KHZ(PHASE_INC_10KHZ),
+        .PHASE_INC_STEP_100HZ(PHASE_INC_STEP_100HZ),
+        .PHASE_INC_STEP_1KHZ(PHASE_INC_STEP_1KHZ),
+        .PHASE_INC_STEP_10KHZ(PHASE_INC_STEP_10KHZ)
     ) dds_dac_inst (
         .clk(clk),
         .reset(reset),
