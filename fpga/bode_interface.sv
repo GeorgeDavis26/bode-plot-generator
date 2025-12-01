@@ -19,6 +19,8 @@ module bode_interface #(
     input  logic [DAC_WIDTH-1:0] dac_out,
     input  logic [PHASE_WIDTH-1:0] phase_inc,
     input  logic sweep_done,
+    input  logic half_flag,
+    input  logic quarter_flag,
 
     // GPIO Outputs
     output logic zero_cross_gpio,      // Zero crossing detected
@@ -34,10 +36,10 @@ module bode_interface #(
     // Frequency change detection
     logic [PHASE_WIDTH-1:0] phase_inc_prev;
     logic freq_changed;
-    
-    // SPI
-    logic [7:0] spi_rx_data;
-    logic [7:0] spi_shift_reg;
+
+    // FSM States
+    typedef enum logic [1:0] {UNATTENUATED, HALF_ATTENUATED, QUARTER_ATTENUATED} statetype;
+    statetype state, nextstate;
 
     // Zero cross detection
     zero_cross #(
@@ -64,12 +66,55 @@ module bode_interface #(
             end
         end
     end
+
+    // State register
+    always_ff @(posedge clk) begin
+        if (!reset) begin
+			state <= UNATTENUATED;
+        end else begin
+			state <= nextstate;	
+		end
+	end
+
+    // Next state logic
+    always_comb begin
+        case (state)
+            UNATTENUATED: begin
+                if (half_flag) begin
+                    nextstate = HALF_ATTENUATED;
+                end else if (quarter_flag) begin
+                    nextstate = QUARTER_ATTENUATED;
+                end else if (~half_flag && ~quarter_flag) begin 
+                    nextstate = UNATTENUATED;
+                end
+            end
+            HALF_ATTENUATED: begin
+                if (~half_flag) begin
+                    nextstate = HALF_ATTENUATED;
+                end else if (~quarter_flag) begin
+                    nextstate = QUARTER_ATTENUATED;
+                end else if (half_flag && quarter_flag) begin 
+                    nextstate = UNATTENUATED;
+                end
+            end
+            QUARTER_ATTENUATED: begin 
+                if (~half_flag) begin
+                    nextstate = HALF_ATTENUATED;
+                end else if (~quarter_flag) begin
+                    nextstate = QUARTER_ATTENUATED;
+                end else if (half_flag && quarter_flag) begin 
+                    nextstate = UNATTENUATED;
+                end
+            end
+            default: nextstate = UNATTENUATED;
+        endcase
+    end
                
     // Outputs
     assign zero_cross_gpio = zero_detected;
     assign freq_change_gpio = freq_changed;
     assign sweep_done_gpio = sweep_done;
-    assign amp_gpio1 = amp_gpio1;
-    assign amp_gpio2 = amp_gpio2;
+    assign amp_gpio1 = (state == HALF_ATTENUATED);
+    assign amp_gpio2 = (state == QUARTER_ATTENUATED);
 
 endmodule

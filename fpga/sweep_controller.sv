@@ -56,7 +56,7 @@ module sweep_controller # (
         .dac_out(dds_out_reg)
     );
 
-     // State register
+    // State register
     always_ff @(posedge clk) begin
         if (!reset) begin
 			state <= IDLE;
