@@ -25,18 +25,18 @@ module sweep_controller # (
     parameter int    PHASE_INC_MAX = 35791394,     // Maximum phase increment (~100 kHz)
     parameter int    PHASE_INC_STEP = 35791         // Step size for phase increment (~100 Hz steps)
 ) (
-    input logic                   clk,
-    input logic                   reset,            // Active low reset
-    input logic                   mcu_ready,
-    output logic [DAC_WIDTH-1:0]  dac_out,
-    output logic                  sweep_done
+    input logic                    clk,
+    input logic                    reset,            // Active low reset
+    input logic                    mcu_ready,
+    output logic [DAC_WIDTH-1:0]   dac_out,
+    output logic                   sweep_done,
+    output logic [PHASE_WIDTH-1:0] phase_inc_reg     // Current phase increment
 );
 
     // FSM States
     typedef enum logic [2:0] {IDLE, WAIT_MCU, SET_FREQ, COUNT_SAMPLES, NEXT_FREQ, DONE} statetype;
     statetype state, nextstate;
 
-    logic [PHASE_WIDTH-1:0] phase_inc_reg;         // Current phase increment
     logic [31:0] sample_counter;                   // Counter for samples per frequency
 
     // DDS output registers
@@ -103,7 +103,7 @@ module sweep_controller # (
     always_comb begin
         case (state)
             IDLE: begin
-                nextstate = SET_FREQ;
+                nextstate = WAIT_MCU;
             end
             WAIT_MCU: begin
                 if (mcu_ready) begin

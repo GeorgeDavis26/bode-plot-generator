@@ -16,69 +16,56 @@ module dds_dac # (
     parameter int    DAC_WIDTH = 8,                 // Bit width for external DAC
     parameter int    PHASE_WIDTH = 32,              // Width phase accumulator
     parameter int    FULL_WAVE = 256,               // Size of full sine wave
-    parameter        LUT_FILE = "dds_lut.txt",       // ROM for LUT
-	parameter DAC_MIDPOINT = 8'h80,
-
+    parameter        LUT_FILE = "dds_lut.txt",      // ROM for LUT
+    parameter        DAC_MIDPOINT = 8'h80,          // DAC midpoint
 
     parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
     parameter int    PHASE_INC_MIN = 35791,         // Minimum phase increment (~100 Hz)
-    parameter int    PHASE_INC_MAX = 35791394,     // Maximum phase increment (~100 kHz)
+    parameter int    PHASE_INC_MAX = 35791394,      // Maximum phase increment (~100 kHz)
     parameter int    PHASE_INC_STEP = 35791         // Step size for phase increment (~100 Hz steps)
 ) (
     input logic                   clk,
     input logic                   reset,            // active low reset
+    input logic                   mcu_ready,        // MCU ready for next frequency
     output logic [DAC_WIDTH-1:0]  dac_data,
-    output logic                  dac_wr,            // active low WR for DAC
-	output logic                  zero_detected,
-	output logic 				  int_osc
+    output logic                  dac_wr,           // active low WR for DAC
+    output logic                  sweep_done,
+    output logic [DAC_WIDTH-1:0]  dac_out,         // Raw DDS output for monitoring
+    output logic [PHASE_WIDTH-1:0] current_phase_inc  // Current phase increment for monitoring
 );
 
-// Connecting DDS output to dac_data
-wire [DAC_WIDTH-1:0] dac_out;
-
-// high frequency oscillator at 12 MHz, suitable for DAC update rate
-HSOSC #(.CLKHF_DIV ("0b10")) hf_osc (.CLKHFPU(1'b1), .CLKHFEN(1'b1), .CLKHF(int_osc));
-
-sweep_controller #(
-    .DAC_WIDTH(DAC_WIDTH),
-    .PHASE_WIDTH(PHASE_WIDTH),
-    .FULL_WAVE(FULL_WAVE),
-    .LUT_FILE(LUT_FILE),
-    .SAMPLES_PER_FREQ(SAMPLES_PER_FREQ),
-    .PHASE_INC_MIN(PHASE_INC_MIN),
-    .PHASE_INC_MAX(PHASE_INC_MAX),
-    .PHASE_INC_STEP(PHASE_INC_STEP)
-) sweep_control (
-    .clk(int_osc),
-    .reset(reset),
-    .dac_out(dac_out),
-    .sweep_done(sweep_done)
-);
-
-// Zero cross detection
-    zero_cross #(
+    // Sweep controller with integrated DDS
+    sweep_controller #(
         .DAC_WIDTH(DAC_WIDTH),
-        .DAC_MIDPOINT(DAC_MIDPOINT)
-    ) zero_cross_detect (
-        .clk(int_osc),
+        .PHASE_WIDTH(PHASE_WIDTH),
+        .FULL_WAVE(FULL_WAVE),
+        .LUT_FILE(LUT_FILE),
+        .SAMPLES_PER_FREQ(SAMPLES_PER_FREQ),
+        .PHASE_INC_MIN(PHASE_INC_MIN),
+        .PHASE_INC_MAX(PHASE_INC_MAX),
+        .PHASE_INC_STEP(PHASE_INC_STEP)
+    ) sweep_control (
+        .clk(clk),
         .reset(reset),
+        .mcu_ready(mcu_ready),
         .dac_out(dac_out),
-        .zero_cross(zero_detected)
+        .sweep_done(sweep_done),
+        .phase_inc_reg(current_phase_inc)
     );
 
-// Connecting DDS output to dac_data
-assign dac_data = dac_out;
+    // Connect DDS output to DAC data
+    assign dac_data = dac_out;
 
-// DAC Control signal
-logic dac_wr_reg = 1'b1;
-always_ff @(posedge int_osc) begin
-    if (~reset) begin
-        dac_wr_reg <= 1'b1;
-    end else begin
-        dac_wr_reg <= ~dac_wr_reg;
+    // DAC Write signal - toggle every clock for continuous updates
+    logic dac_wr_reg = 1'b1;
+    always_ff @(posedge clk) begin
+        if (~reset) begin
+            dac_wr_reg <= 1'b1;
+        end else begin
+            dac_wr_reg <= ~dac_wr_reg;
+        end
     end
-end
 
-assign dac_wr = dac_wr_reg;
+    assign dac_wr = dac_wr_reg;
 
 endmodule
