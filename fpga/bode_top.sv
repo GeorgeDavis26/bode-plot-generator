@@ -17,7 +17,6 @@ module bode_top #(
     parameter        DAC_MIDPOINT = 8'h80,          // DAC midpoint (128 for 8-bit)
 
     // Sweep Controller Parameters
-    parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
     parameter int    PHASE_INC_MIN = 5369,          // Minimum phase increment (~100 Hz at 80MHz)
     parameter int    PHASE_INC_MAX = 5368709,       // Maximum phase increment (~100 kHz at 80MHz)
     
@@ -34,7 +33,8 @@ module bode_top #(
     input  logic reset,                             // Active low reset (PIN 9)
 
     // MCU Interface
-    input  logic mcu_ready,                         // MCU ready for next frequency (PIN A10 : 23)
+    input  logic mcu_ready,                         // MCU is ready to collect data (PIN A10 : 23)
+    input logic  mcu_done,                          // MCU is done collecting data  (PIN ? :23)
     input  logic half_flag,                         // Half amplitude request from MCU (PIN A9 : 25)
     input  logic quarter_flag,                      // Quarter amplitude request from MCU (PIN A5 : 26)
 
@@ -61,7 +61,6 @@ module bode_top #(
         .FULL_WAVE(FULL_WAVE),
         .LUT_FILE(LUT_FILE),
         .DAC_MIDPOINT(DAC_MIDPOINT),
-        .SAMPLES_PER_FREQ(SAMPLES_PER_FREQ),
         .PHASE_INC_MIN(PHASE_INC_MIN),
         .PHASE_INC_MAX(PHASE_INC_MAX),
         .PHASE_INC_1KHZ(PHASE_INC_1KHZ),
@@ -73,6 +72,7 @@ module bode_top #(
         .clk(clk),
         .reset(reset),
         .mcu_ready(mcu_ready),
+        .mcu_done(mcu_done),
         .dac_data(dac_data),
         .dac_wr(dac_wr),
         .sweep_done(sweep_done),

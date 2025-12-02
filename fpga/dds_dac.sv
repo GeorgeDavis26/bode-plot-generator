@@ -19,7 +19,6 @@ module dds_dac # (
     parameter        LUT_FILE = "dds_lut.txt",      // ROM for LUT
     parameter        DAC_MIDPOINT = 8'h80,          // DAC midpoint
 
-    parameter int    SAMPLES_PER_FREQ = 1024,       // Number of samples per frequency
     parameter int    PHASE_INC_MIN = 5369,          // Minimum phase increment (~100 Hz at 80MHz)
     parameter int    PHASE_INC_MAX = 5368709,       // Maximum phase increment (~100 kHz at 80MHz)
 
@@ -34,7 +33,8 @@ module dds_dac # (
 ) (
     input logic                   clk,
     input logic                   reset,            // active low reset
-    input logic                   mcu_ready,        // MCU ready for next frequency
+    input logic                   mcu_ready,        // MCU is ready to collect data
+    input logic                   mcu_done,         // MCU is done collecting data
     input logic                   quarter_flag,
     input logic                   half_flag,
     output logic [DAC_WIDTH-1:0]  dac_data,
@@ -53,7 +53,6 @@ module dds_dac # (
         .PHASE_WIDTH(PHASE_WIDTH),
         .FULL_WAVE(FULL_WAVE),
         .LUT_FILE(LUT_FILE),
-        .SAMPLES_PER_FREQ(SAMPLES_PER_FREQ),
         .PHASE_INC_MIN(PHASE_INC_MIN),
         .PHASE_INC_MAX(PHASE_INC_MAX),
         .PHASE_INC_1KHZ(PHASE_INC_1KHZ),
@@ -65,6 +64,7 @@ module dds_dac # (
         .clk(clk),
         .reset(reset),
         .mcu_ready(mcu_ready),
+        .mcu_done(mcu_done),
         .dac_out(dac_out),
         .sweep_done(sweep_done),
         .phase_inc_reg(current_phase_inc)
