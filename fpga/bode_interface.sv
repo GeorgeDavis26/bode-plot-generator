@@ -70,7 +70,7 @@ module bode_interface #(
     // State register
     always_ff @(posedge clk) begin
         if (!reset) begin
-			state <= UNATTENUATED;
+			state <= IDLE;
         end else begin
 			state <= nextstate;	
 		end
@@ -100,7 +100,7 @@ module bode_interface #(
                     nextstate = FULL;
                 end
             end
-            default: nextstate = UNATTENUATED;
+            default: nextstate = IDLE;
         endcase
     end
                
