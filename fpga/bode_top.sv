@@ -34,7 +34,7 @@ module bode_top #(
 
     // MCU Interface
     input  logic mcu_ready,                         // MCU is ready to collect data (PIN A10 : 23)
-    input logic  mcu_done,                          // MCU is done collecting data  (PIN ? :23)
+    input logic  mcu_done,                          // MCU is done collecting data  (PIN PB6 :18)
     input  logic half_flag,                         // Half amplitude request from MCU (PIN A9 : 25)
     input  logic quarter_flag,                      // Quarter amplitude request from MCU (PIN A5 : 26)
 

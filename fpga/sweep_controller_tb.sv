@@ -18,18 +18,6 @@ module sweep_controller_tb;
     localparam FULL_WAVE   = 256;
     localparam LUT_FILE    = "dds_lut.txt";
 
-    // localparam    PHASE_INC_MIN = 5369;          // Minimum phase increment (~100 Hz at 80MHz)
-    // localparam    PHASE_INC_MAX = 5368709;       // Maximum phase increment (~100 kHz at 80MHz)
-
-    // // Decade boundaries for phase increments
-    // localparam     PHASE_INC_1KHZ = 53687;        // 1 kHz boundary
-    // localparam     PHASE_INC_10KHZ = 536871;      // 10 kHz boundary
-    
-    // // Step sizes for each decade
-    // localparam     PHASE_INC_STEP_100HZ = 5369;   // 100 Hz steps (100Hz to 1kHz)
-    // localparam     PHASE_INC_STEP_1KHZ = 53687;   // 1 kHz steps (1kHz to 10kHz)
-    // localparam     PHASE_INC_STEP_10KHZ = 536871;  // 10 kHz steps (10kHz to 100kHz)
-
     // Smaller numbers for tb
     localparam    PHASE_INC_MIN = 1000;          // Minimum phase increment (~100 Hz at 80MHz)
     localparam    PHASE_INC_MAX = 100000;       // Maximum phase increment (~100 kHz at 80MHz)

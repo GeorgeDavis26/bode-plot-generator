@@ -46,6 +46,7 @@ module sweep_controller # (
     statetype state, nextstate;
 
     logic [PHASE_WIDTH-1:0] current_step_size;    // Current step size based on decade
+    logic [PHASE_WIDTH-1:0] next_step_size;         // Next step size (combinational)
 
     // DDS output registers
     logic [DAC_WIDTH-1:0] dac_out_reg;
@@ -61,17 +62,20 @@ module sweep_controller # (
         .clk(clk),
         .reset(reset),
         .phase_inc(phase_inc_reg),
-        . dac_out(dds_out_reg)
+        .dac_out(dds_out_reg)
     );
 
-     // Determine step size based on current frequency
+     // Calculate NEXT step size based on what the frequency will be
     always_comb begin
-        if (phase_inc_reg < PHASE_INC_1KHZ) begin
-            current_step_size = PHASE_INC_STEP_100HZ;
-        end else if (phase_inc_reg < PHASE_INC_10KHZ) begin
-            current_step_size = PHASE_INC_STEP_1KHZ;
+        logic [PHASE_WIDTH-1:0] next_phase_inc;
+        next_phase_inc = phase_inc_reg + current_step_size;
+        
+        if (next_phase_inc < PHASE_INC_1KHZ) begin
+            next_step_size = PHASE_INC_STEP_100HZ;
+        end else if (next_phase_inc < PHASE_INC_10KHZ) begin
+            next_step_size = PHASE_INC_STEP_1KHZ;
         end else begin
-            current_step_size = PHASE_INC_STEP_10KHZ;
+            next_step_size = PHASE_INC_STEP_10KHZ;
         end
     end
 
@@ -93,9 +97,18 @@ module sweep_controller # (
             case (state)
                 IDLE: begin
                     phase_inc_reg <= PHASE_INC_MIN;
+                    current_step_size <= PHASE_INC_STEP_100HZ;  // reset to first decade
                 end
                 WAIT_MCU: begin 
                     // Waiting for MCU ready flag
+                    // Update step size for the current frequency
+                    if (phase_inc_reg < PHASE_INC_1KHZ) begin
+                        current_step_size <= PHASE_INC_STEP_100HZ;
+                    end else if (phase_inc_reg < PHASE_INC_10KHZ) begin
+                        current_step_size <= PHASE_INC_STEP_1KHZ;
+                    end else begin
+                        current_step_size <= PHASE_INC_STEP_10KHZ;
+                    end
                 end
                 SET_FREQ: begin
                 end
