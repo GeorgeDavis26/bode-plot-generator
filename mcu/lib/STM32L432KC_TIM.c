@@ -27,6 +27,17 @@ void initTIM_milli(TIM_TypeDef * TIMx){
   TIMx->CR1 |= 1; // Set CEN = 1
 }
 
+void initTIM_ZC(TIM_TypeDef * TIMx){
+  // Set prescaler to give 1 ns time base
+  uint32_t psc_div = (uint32_t) (ZERO_CROSS_PSC);
+  // Set prescaler division factor
+  TIMx->PSC = (psc_div - 1);
+  // Generate an update event to update prescaler value
+  TIMx->EGR |= 1;
+  // Enable counter
+  TIMx->CR1 |= 1; // Set CEN = 1
+}
+
 void delay_micros(TIM_TypeDef * TIMx, uint32_t us){
   TIMx->ARR = us;// Set timer max count
   TIMx->EGR |= 1;     // Force update

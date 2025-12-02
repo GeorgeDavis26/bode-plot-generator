@@ -1,8 +1,8 @@
 /*
-File: Lab_6_JHB.c
-Author: Josh Brake
-Email: jbrake@hmc.edu
-Date: 9/14/19
+File: main.c
+Author: George Davis and Matthew Molinar
+Email: gdavis@hmc.edu mmolinar@hmc.edu
+Date: 12/1/25
 */
 
 #include "STM32L432KC.h"
@@ -11,6 +11,64 @@ Date: 9/14/19
 #include <stdio.h>
 #include "main.h"
 
+/*
+
+Bode Plot SOP:
+
+Buttons:
+Init Bode -- button on B0
+Half Amplitude -- P43
+Three Quarters Amplitude -- P34
+
+Flags:
+MCU ready -- A10
+
+zero cross -- A6
+frequency change -- A11
+Sweep done -- B5
+Half Amplitude -- B4
+Three Quarters Amplitude -- B7
+
+Init Bode
+Amplitude?
+
+Loop{
+zerocross timer start
+[FPGA loads the next frequency]
+wait(MCU ready) 
+delay micros {
+frequency change
+zero cross (continuous)
+}
+1500 Samples
+MCU Done -- zero cross timer end
+}
+
+sweep done
+*/
+
+// Global variable definitions
+volatile uint32_t RX_zc_times[NUM_ZERO_CROSS];
+volatile uint32_t TX_zc_times[NUM_ZERO_CROSS];
+volatile int zero_cross_count = 0;
+
+volatile int cur_freq_change_state = 0;
+volatile int prev_freq_change_state = 0;
+
+
+/*
+ZERO_CROSS interrupt handler, check for an interrupt then performs timer sample
+*/
+void EXTI9_5_IRQHandler(void){
+    if (EXTI->PR1 & (1 << gpioPinOffset(ZERO_CROSS))){ // Check if EXTI6 triggered
+        EXTI->PR1 |= (1 << gpioPinOffset(ZERO_CROSS)); // Clear the interrupt flag
+        // Read and store the timer counter value
+        if (zero_cross_count < NUM_ZERO_CROSS) {
+            RX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+            zero_cross_count++;
+        }
+    }
+}
 
 //determines whether a given character sequence is in a char array request, returning 1 if present, -1 if not present
 int inString(char request[], char des[]) {
@@ -19,25 +77,77 @@ int inString(char request[], char des[]) {
 }
 
 void config(void){
+  //Clock enables
   configureFlash();
   configureClock();
 
-  RCC->APB2ENR |= (RCC_APB2ENR_TIM15EN); //MICRO TIM
+  //Timer enables
+  RCC->APB2ENR |= RCC_APB2ENR_TIM15EN; //MICRO TIM
   RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN; //MILLI TIM
+  RCC->APB2ENR |= RCC_APB2ENR_TIM16EN; // ZERO CROSSING TIMER
   initTIM_milli(MILLI_TIM);
   initTIM_micro(MICRO_TIM);
+  initTIM_ZC(ZERO_CROSS_TIM);
 
+  //GPIO enables
   gpioEnable(GPIO_PORT_A);
   gpioEnable(GPIO_PORT_B);
   gpioEnable(GPIO_PORT_C);
 
+  //ADC Config
   configureADC();
 
-  pinMode(GPIO_BUTTON, GPIO_INPUT);
-  GPIOA->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD4, 0b01); // Set PA4 (GPIO_BUTTON) as pull-up
-  pinMode(GPIO_LED, GPIO_OUTPUT);
+  //GPIO mode
+  //pinMode(GPIO_BUTTON, GPIO_INPUT);
+  //GPIOA->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD4, 0b01); // Set PA4 (GPIO_BUTTON) as pull-up
+  
+  //pinMode(GPIO_LED, GPIO_OUTPUT);
+  
+  //ADC1 input pin
   pinMode(GPIO_ADC1, GPIO_ANALOG);
 
+  //initialize a bode plot flag pin
+  pinMode(INIT_BODE, GPIO_INPUT);
+  GPIOB->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD0, PULL_DOWN);
+  
+  //Half wave attenuation flag pin
+  pinMode(HALF_ATTEN, GPIO_INPUT);
+  GPIOB->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD4, PULL_DOWN);
+  
+  //Quarter wave attenuation flag pin
+  pinMode(QUARTER_ATTEN, GPIO_INPUT);
+  GPIOB->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD7, PULL_DOWN);
+  
+  //Sweep is over flag pin
+  pinMode(SWEEP_DONE, GPIO_INPUT);
+  GPIOB->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD5, PULL_DOWN);
+  
+  //Change in frequncies flag pin
+  pinMode(FREQ_CHANGE, GPIO_INPUT);
+  GPIOA->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD11, PULL_DOWN);
+  
+  //Zero cross flag pin (INTERRUPT)
+  pinMode(ZERO_CROSS, GPIO_INPUT);
+  GPIOA->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD10, PULL_DOWN);
+  
+  //MCU ready to take new ADC samples at a different frequency
+  pinMode(MCU_READY, GPIO_OUTPUT);
+
+  //MCU done taking samples and ready to go to a new frequency
+  pinMode(MCU_DONE, GPIO_OUTPUT);
+
+  //Enable SYSCFG clock domain in RCC for EXTI interrupts
+  RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
+  // Configure EXTICR for the zero crossing flag
+  SYSCFG->EXTICR[1] |= _VAL2FLD(SYSCFG_EXTICR2_EXTI6, 0b000); // Select PA6
+
+  //enable interrupts globally
+  __enable_irq();
+  EXTI->IMR1 |= (1 << gpioPinOffset(ZERO_CROSS)); // Configure the mask bit
+  // Enable rising edge trigger
+  EXTI->RTSR1 |= (1 << gpioPinOffset(ZERO_CROSS));// Enable rising edge trigger
+  // Turn on EXTI interrupt in NVIC_ISER
+  NVIC->ISER[0] |= (1 << EXTI9_5_IRQn);  // Changed from EXTI1_IRQn
 };
 
 char array2String(uint16_t array){
@@ -46,72 +156,64 @@ char array2String(uint16_t array){
   strcat(string, "["); // beginning of array
 
   for(int x = 0; x < NUM_FREQUENCIES; x++) {
-    for(int y = 0; y < NUM_SAMPLES; y++) {
-      sprintf(temp_buffer, "%u", array[x][y]);
-      strcat(string, temp_buffer); 
-      if (!(x == NUM_FREQUENCIES - 1 && y == NUM_SAMPLES - 1)) {
-        strcat(string, ","); // Add comma between values, but not after the last one.
-      }
+    sprintf(temp_buffer, "%u", array[x][y]);
+    strcat(string, temp_buffer); 
+    if (!(x == NUM_FREQUENCIES - 1)) {
+      strcat(string, ","); // Add comma between values, but not after the last one.
     }
   }
   strcat(string, "]"); // End of array    
   return string;
 }
 
-double amplitudeExtract(const uint16_t *sine_array, int res_bits){
-    // compute DC offset (mean)
-    double sum = 0.0;
-    for (int i = 0; i < NUM_SAMPLES ; i++) sum += sine_array[i];
-    double mean = sum / NUM_SAMPLES;
-
-    // compute sum of the square of each value
-    double square = 0.0;
-    for (size_t i=0;i<n;i++) {
-        double v = (double)sine_array[i] - mean;
-        square += v * v;
-    }
-    // find the average of the squared values and take the sqrt
-    double rms_avg = sqrt(square / NUM_SAMPLES);
-
-    // compute peak to peak amplitude
-    double peak_counts = rms_counts * sqrt(2.0);
-    double scale = vref / ((1u << res_bits) - 1u);
-    return (double)(peak_counts * scale);
-}
-
 int main(void) {
   config();
+  // Wait for INIT_BODE to go high before starting
+  while (!digitalRead(INIT_BODE));
 
-  int volatile cur_button_state = digitalRead(GPIO_BUTTON);
-  int volatile led_state = 0;
-  int volatile prev_button_state = cur_button_state;
+  int volatile cur_freq_change_state = digitalRead(GPIO_BUTTON);
+  int volatile prev_freq_change_state = cur_freq_change_state;
 
   int i=0;
-  uint16_t adc_samples[NUM_FREQUENCIES][NUM_SAMPLES];
+  int num_samples_collected=0;
 
-  USART_TypeDef * USART = initUSART(USART1_ID, 125000);
+  uint16_t adc_samples[MAX_SAMPLES];
+  uint16_t gain_samples[NUM_FREQUENCIES];
+  uint16_t phase_samples[NUM_FREQUENCIES];
 
-  // char adc_data_string[NUM_SAMPLES * NUM_FREQUENCIES];
-  char adc_data_string[(NUM_SAMPLES * NUM_FREQUENCIES * 6) + 3];
-  //test
+  while((i < NUM_FREQUENCIES) || digitalRead(SWEEP_DONE)){
+    prev_freq_change_state = cur_freq_change_state;
+    cur_freq_change_state = digitalRead(FREQ_CHANGE);
 
-  while(i < NUM_FREQUENCIES){
-
-      prev_button_state = cur_button_state;
-      cur_button_state = digitalRead(GPIO_BUTTON);
-
-      if ((prev_button_state == 1) && (cur_button_state == 0)) {
-          led_state = !led_state;
-          digitalWrite(GPIO_LED, led_state);
-          adcConversion(adc_samples[i], NUM_SAMPLES);
-          i++;
-      }
-      delay_millis(MILLI_TIM, 200);
+    digitalWrite(MCU_READY, GPIO_HIGH);
+    if ((prev_freq_change_state == 0) && (cur_freq_change_state == 1)) { //check for rising edge of freq_change flag
+      digitialWrite(MCU_READY, GPIO_LOW);
+      // Reset and start the zero crossing timer
+      zero_cross_count = 0;
+      ZERO_CROSS_TIM->CNT = 0;  // Reset counter to 0
+      ZERO_CROSS_TIM->CR1 |= TIM_CR1_CEN;  // Start timer
+      
+      num_samples_collected = adcConversion(adc_samples);
+      
+      // Stop the timer after sampling
+      ZERO_CROSS_TIM->CR1 &= ~TIM_CR1_CEN;  // Stop timer
+      
+      gain_samples[i] = (uint16_t)amplitudeExtract(adc_samples, num_samples_collected, RESOLUTION_12bit);
+      phase_samples[i] = ; // phaseExtract not implemented yet
+      i++;
+      digitalWrite(MCU_DONE, GPIO_HIGH);
+      delay_millis(MILLI_TIM, 10);
+      digitalWrite(MCU_DONE, GPIO_LOW);
+    }
+    delay_millis(MILLI_TIM, 1);
   };
+  
+  USART_TypeDef * USART = initUSART(USART1_ID, 125000);
+  char phase_data_string[(NUM_FREQUENCIES * 6) + 3];
+  char gain_data_string[(NUM_FREQUENCIES * 6) + 3];
 
-  amplitude = amplitudeExtract(adc_samples);
-
-  adc_data_string = array2String(adc_samples);
+  phase_data_string = array2String(phase_samples, NUM_FREQUENCIES);
+  gain_data_string = array2String(gain_samples, NUM_FREQUENCIES);
 
   while(1) {
     // Receive web request from the ESP
@@ -125,7 +227,7 @@ int main(void) {
     // Send data to webpage
     sendString(USART, webpageStart);
     sendString(USART, plot);
-    sendString(USART, adc_data_string);
+    sendString(USART, gain_data_string);
     sendString(USART, webpageEnd);
   }
 }

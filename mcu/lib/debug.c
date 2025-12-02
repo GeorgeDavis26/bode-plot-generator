@@ -71,3 +71,104 @@ void IOT_debug(void){
   }
 }
  
+
+
+int main(void) {
+  config();
+
+  int volatile cur_button_state = digitalRead(GPIO_BUTTON);
+  int volatile led_state = 0;
+  int volatile prev_button_state = cur_button_state;
+
+  int i=0;
+  uint16_t adc_samples[NUM_FREQUENCIES][NUM_SAMPLES];
+
+  USART_TypeDef * USART = initUSART(USART1_ID, 125000);
+
+  // char adc_data_string[NUM_SAMPLES * NUM_FREQUENCIES];
+  char adc_data_string[(NUM_SAMPLES * NUM_FREQUENCIES * 6) + 3];
+  //test
+
+  while(i < NUM_FREQUENCIES){
+
+      prev_button_state = cur_button_state;
+      cur_button_state = digitalRead(GPIO_BUTTON);
+
+      if ((prev_button_state == 1) && (cur_button_state == 0)) {
+          led_state = !led_state;
+          digitalWrite(GPIO_LED, led_state);
+          adcConversion(adc_samples[i], NUM_SAMPLES);
+          i++;
+      }
+      delay_millis(MILLI_TIM, 200);
+  };
+
+  amplitude = amplitudeExtract(adc_samples);
+
+  adc_data_string = array2String(adc_samples);
+
+  while(1) {
+    // Receive web request from the ESP
+    char request[BUFF_LEN] = "                  "; 
+    int charIndex = 0;
+    while(inString(request, "\n") == -1) {
+      while(!(USART->ISR & USART_ISR_RXNE));
+      request[charIndex++] = readChar(USART);
+    }
+
+    // Send data to webpage
+    sendString(USART, webpageStart);
+    sendString(USART, plot);
+    sendString(USART, adc_data_string);
+    sendString(USART, webpageEnd);
+  }
+}
+
+// void adcConversion(void)
+// {
+//     for (int j = 0; j < NUM_FREQUENCIES; j++) {
+//         //if the frequencey changes then do this 
+//         //while(!FREQ_GPIO); //wait for a new frequency to be set
+//         uint16_t adcBuffer[NUM_FREQUENCIES][NUM_SAMPLES];
+//         for (int i = 0; i < NUM_SAMPLES; i++) {
+//             ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+//             ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+//             while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+//             adcBuffer[j][i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+//         }
+//         ADC1->CR |= ADC_CR_ADSTP;            // ask hardware to stop
+//         while (ADC1->CR & ADC_CR_ADSTP);     // wait for it to actually stop
+//     }
+// }
+
+    /*
+    while(1){
+        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+        uint16_t VREFINT_DATA = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC;
+        float voltage = 3*(VREFINT_DATA/(4095.0));
+        printf("ADC Voltage: ");
+        printf("%d ", VREFINT_DATA);
+        printf("%f", voltage);
+        printf("\n");
+    }
+*/
+
+char array2String2d(uint16_t array){
+  char temp_buffer[20];
+  string[0] = '\0'; // Initialize to empty string
+  strcat(string, "["); // beginning of array
+
+  for(int x = 0; x < NUM_FREQUENCIES; x++) {
+    for(int y = 0; y < NUM_SAMPLES; y++) {
+      sprintf(temp_buffer, "%u", array[x][y]);
+      strcat(string, temp_buffer); 
+      if (!(x == NUM_FREQUENCIES - 1 && y == NUM_SAMPLES - 1)) {
+        strcat(string, ","); // Add comma between values, but not after the last one.
+      }
+    }
+  }
+  strcat(string, "]"); // End of array    
+  return string;
+}

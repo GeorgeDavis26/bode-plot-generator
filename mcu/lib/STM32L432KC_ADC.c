@@ -45,45 +45,60 @@ void configureADC(void) {
     while (ADC1->ISR & ADC_ISR_ADRDY);
 }
 
-// void adcConversion(void)
-// {
-//     for (int j = 0; j < NUM_FREQUENCIES; j++) {
-//         //if the frequencey changes then do this 
-//         //while(!FREQ_GPIO); //wait for a new frequency to be set
-//         uint16_t adcBuffer[NUM_FREQUENCIES][NUM_SAMPLES];
-//         for (int i = 0; i < NUM_SAMPLES; i++) {
-//             ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
-//             ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
-//             while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
-//             adcBuffer[j][i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
-//         }
-//         ADC1->CR |= ADC_CR_ADSTP;            // ask hardware to stop
-//         while (ADC1->CR & ADC_CR_ADSTP);     // wait for it to actually stop
-//     }
-// }
-
-void adcConversion(uint16_t* buffer, int num_samples) {
-    for (int i = 0; i < num_samples; i++) {
+int adcConversion(uint16_t* buffer) {
+    int i = 0;
+    // Sample until we get NUM_ZERO_CROSS crossings OR hit max buffer
+    while (zero_cross_count < NUM_ZERO_CROSS && i < MAX_SAMPLES) {
         ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
         ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
         while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
         buffer[i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+        
+        // Check for zero crossing in software (TX detection)
+        if(i >= 1){
+            if((buffer[i] <= ZC_THRESHOLD) && (buffer[i-1] > ZC_THRESHOLD)) {
+                if (zero_cross_count < NUM_ZERO_CROSS) {  // Add bounds check
+                    TX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+                }
+            }
+        }
+        i++;
     }
     ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
+    
+    return i; // Return actual number of samples collected
 }
 
+double amplitudeExtract(const uint16_t *sine_array, int num_samples, int res_bits){
+    // compute DC offset (mean)
+    double sum = 0.0;
+    for (int i = 0; i < num_samples; i++) sum += sine_array[i];
+    double mean = sum / num_samples;
 
-    /*
-    while(1){
-        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
-        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
-        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
-        uint16_t VREFINT_DATA = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC;
-        float voltage = 3*(VREFINT_DATA/(4095.0));
-        printf("ADC Voltage: ");
-        printf("%d ", VREFINT_DATA);
-        printf("%f", voltage);
-        printf("\n");
+    // compute sum of the square of each value
+    double square = 0.0;
+    for (int i = 0; i < num_samples; i++) {
+        double v = (double)sine_array[i] - mean;
+        square += v * v;
     }
-*/
+    // find the average of the squared values and take the sqrt
+    double rms_counts = sqrt(square / num_samples);
+
+    // compute peak to peak amplitude
+    double peak_counts = rms_counts * sqrt(2.0);
+    double vref = 3.3;     
+    double scale = vref / ((1u << res_bits) - 1u);
+    return (double)(peak_counts * scale);
+}
+
+double phaseExtract(const uint16_t *rx, const uint16_t *tx){
+    double phase = 0.0;
+    uint16_t phasearray[NUM_ZERO_CROSS];
+    for (int i = 0; i < NUM_ZERO_CROSS; i++) {
+        phasearray[i] = (uint16_t)rx[i] - (uint16_t)tx[i];
+        sum += phasearray[i];
+    }
+    double mean = sum / NUM_ZERO_CROSS;
+    return 0.0;
+}
