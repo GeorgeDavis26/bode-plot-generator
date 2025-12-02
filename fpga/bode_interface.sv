@@ -20,14 +20,14 @@ module bode_interface #(
     input  logic [PHASE_WIDTH-1:0] phase_inc,
     input  logic sweep_done,
     input  logic half_flag,
-    input  logic quarter_flag,
+    input  logic full_flag,
 
     // GPIO Outputs
     output logic zero_cross_gpio,      // Zero crossing detected
     output logic freq_change_gpio,     // Frequency just changed
     output logic sweep_done_gpio,      // Sweep completed
     output logic amp_gpio1,            // gpio pin for half amplitude
-    output logic amp_gpio2             // gpio pin for 3/4 amplitude
+    output logic amp_gpio2             // gpio pin for full amplitude
 );
 
     // Zero crossing detection
@@ -38,7 +38,7 @@ module bode_interface #(
     logic freq_changed;
 
     // FSM States
-    typedef enum logic [1:0] {UNATTENUATED, HALF_ATTENUATED, QUARTER_ATTENUATED} statetype;
+    typedef enum logic [1:0] {IDLE, HALF_ATTENUATED, FULL} statetype;
     statetype state, nextstate;
 
     // Zero cross detection
@@ -79,31 +79,25 @@ module bode_interface #(
     // Next state logic
     always_comb begin
         case (state)
-            UNATTENUATED: begin
-                if (half_flag) begin
+            IDLE: begin
+                if (~half_flag) begin
                     nextstate = HALF_ATTENUATED;
-                end else if (quarter_flag) begin
-                    nextstate = QUARTER_ATTENUATED;
-                end else if (~half_flag && ~quarter_flag) begin 
-                    nextstate = UNATTENUATED;
+                end else if (~full_flag) begin
+                    nextstate = FULL;
                 end
             end
             HALF_ATTENUATED: begin
                 if (~half_flag) begin
                     nextstate = HALF_ATTENUATED;
-                end else if (~quarter_flag) begin
-                    nextstate = QUARTER_ATTENUATED;
-                end else if (half_flag && quarter_flag) begin 
-                    nextstate = UNATTENUATED;
+                end else if (~full_flag) begin
+                    nextstate = FULL;
                 end
             end
-            QUARTER_ATTENUATED: begin 
+            FULL: begin 
                 if (~half_flag) begin
                     nextstate = HALF_ATTENUATED;
-                end else if (~quarter_flag) begin
-                    nextstate = QUARTER_ATTENUATED;
-                end else if (half_flag && quarter_flag) begin 
-                    nextstate = UNATTENUATED;
+                end else if (~full_flag) begin
+                    nextstate = FULL;
                 end
             end
             default: nextstate = UNATTENUATED;
@@ -115,6 +109,6 @@ module bode_interface #(
     assign freq_change_gpio = freq_changed;
     assign sweep_done_gpio = sweep_done;
     assign amp_gpio1 = (state == HALF_ATTENUATED);
-    assign amp_gpio2 = (state == QUARTER_ATTENUATED);
+    assign amp_gpio2 = (state == FULL);
 
 endmodule

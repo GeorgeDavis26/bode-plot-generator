@@ -35,7 +35,7 @@ module dds_dac # (
     input logic                   reset,            // active low reset
     input logic                   mcu_ready,        // MCU is ready to collect data
     input logic                   mcu_done,         // MCU is done collecting data
-    input logic                   quarter_flag,
+    input logic                   full_flag,
     input logic                   half_flag,
     output logic [DAC_WIDTH-1:0]  dac_data,
     output logic                  dac_wr,           // active low WR for DAC
@@ -70,7 +70,7 @@ module dds_dac # (
         .phase_inc_reg(current_phase_inc)
     );
 
-     // Amplitude control logic
+        // Amplitude control logic
     always_comb begin
         // Convert to signed for proper arithmetic around midpoint
         logic signed [DAC_WIDTH:0] signed_amplitude;
@@ -80,11 +80,10 @@ module dds_dac # (
         signed_amplitude = $signed({1'b0, dac_out}) - $signed({1'b0, DAC_MIDPOINT});
         
         // Apply attenuation based on control flags
-        case ({quarter_flag, half_flag})
-            2'b00: attenuated_amplitude = signed_amplitude;           // Full amplitude
-            2'b01: attenuated_amplitude = signed_amplitude >>> 1;     // Half amplitude
-            2'b10: attenuated_amplitude = signed_amplitude >>> 2;     // Quarter amplitude
-            2'b11: attenuated_amplitude = signed_amplitude;           // Full amplitude
+        case (1'b1)
+            full_flag: attenuated_amplitude = signed_amplitude;           // Full amplitude
+            half_flag: attenuated_amplitude = signed_amplitude >>> 1;     // Half amplitude
+            default:   attenuated_amplitude = signed_amplitude;           // Default to full amplitude
         endcase
         
         // Convert back to unsigned and add midpoint offset

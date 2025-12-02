@@ -36,7 +36,7 @@ module bode_top #(
     input  logic mcu_ready,                         // MCU is ready to collect data (PIN A10 : 23)
     input logic  mcu_done,                          // MCU is done collecting data  (PIN PB6 :18)
     input  logic half_flag,                         // Half amplitude request from MCU (PIN A9 : 25)
-    input  logic quarter_flag,                      // Quarter amplitude request from MCU (PIN A5 : 26)
+    input  logic full_flag,                         // Full amplitude request from MCU (PIN A5 : 26)
 
     // DAC Interface
     output logic [DAC_WIDTH-1:0] dac_data,          // Data to DAC
@@ -46,8 +46,8 @@ module bode_top #(
     output logic zero_cross_gpio,                   // Zero crossing detected (PIN A6 : 27)
     output logic freq_change_gpio,                  // Frequency change notification (PIN A11 : 20)
     output logic sweep_done_gpio,                   // Sweep completion flag (PIN B5 : 10)
-    output logic amp_gpio1,                         // Amplitude control GPIO 1 (PIN B4 : 12)
-    output logic amp_gpio2                          // Amplitude control GPIO 2 (PIN B7 : 11) 
+    output logic amp_gpio1,                         // Half amplitude control GPIO 1 (PIN B4 : 12)
+    output logic amp_gpio2                          // Full amplitude control GPIO 2 (PIN B7 : 11) 
 );
 
     // Internal signals
@@ -73,6 +73,8 @@ module bode_top #(
         .reset(reset),
         .mcu_ready(mcu_ready),
         .mcu_done(mcu_done),
+        .full_flag(full_flag),
+        .half_flag(half_flag),
         .dac_data(dac_data),
         .dac_wr(dac_wr),
         .sweep_done(sweep_done),
@@ -91,7 +93,7 @@ module bode_top #(
         .phase_inc(current_phase_inc),
         .sweep_done(sweep_done),
         .half_flag(half_flag),
-        .quarter_flag(quarter_flag),
+        .full_flag(full_flag),
         .zero_cross_gpio(zero_cross_gpio),
         .freq_change_gpio(freq_change_gpio),
         .sweep_done_gpio(sweep_done_gpio),
