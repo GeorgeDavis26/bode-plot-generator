@@ -29,38 +29,50 @@ void EXTI9_5_IRQHandler(void){
         if (!interupt_disable){
           if (zero_cross_count < NUM_ZERO_CROSS) {
               TX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
-              zero_cross_count++;
           }
         }
     }
 }
 
+int adcConversion(uint16_t* buffer, int num_samples) {
+    for (int i = 0; i < num_samples; i++) {
+        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+        buffer[i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+    }
+    ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
+    while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
+    return num_samples;
+}
+
+/*
 int adcConversion(uint16_t* buffer) {
     int i = 0;
     // Sample until we get NUM_ZERO_CROSS crossings OR hit max buffer
-    while (zero_cross_count < NUM_ZERO_CROSS && i < MAX_SAMPLES) {
+    while (i < MAX_SAMPLES) {
         ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
-        delay_micros(MICRO_TIM,  1); //reduce sample frequency a bit so we don't overflow into PLL with 100 Hz max sample
+        //delay_micros(MICRO_TIM,  1); //reduce sample frequency a bit so we don't overflow into PLL with 100 Hz max sample
         ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
         while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
         buffer[i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
         
         // Check for zero crossing in software (TX detection)
-        if(i >= 1){
-            if((buffer[i] <= ZC_THRESHOLD) && (buffer[i-1] > ZC_THRESHOLD)) {
-                if (zero_cross_count < NUM_ZERO_CROSS) {  // Add bounds check
-                    RX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
-                }
+        if (zero_cross_count < NUM_ZERO_CROSS) {  // Add bounds check
+          if((buffer[i] <= ZC_THRESHOLD) && (buffer[i-1] > ZC_THRESHOLD)) {
+                RX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+                zero_cross_count++;
             }
+          }
         }
         i++;
-    }
     ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
     
     return i; // Return actual number of samples collected
 }
 
+*/
 //determines whether a given character sequence is in a char array request, returning 1 if present, -1 if not present
 int inString(char request[], char des[]) {
 	if (strstr(request, des) != NULL) {return 1;}
@@ -216,7 +228,7 @@ int main(void) {
     // Reset and start the zero crossing timer
     zero_cross_count = 0;
 
-    num_samp_collected = adcConversion(adc_samples);
+    num_samp_collected = adcConversion(adc_samples, MAX_SAMPLES);
     
     // Stop the timer after sampling
     ZERO_CROSS_TIM->CR1 &= ~TIM_CR1_CEN;  // Stop timer

@@ -246,7 +246,8 @@ char* webpageEnd =
 /*-----------------FUNCTION PROTOTYPES--------------------*/
 
 int inString(char request[], char des[]);
-int adcConversion(uint16_t* buffer);
+int adcConversion(uint16_t* buffer, int num_samples);
+//int adcConversion(uint16_t* buffer);
 void config(void);
 int main(void);
 void doubleArray2String(double *array, char *string);
