@@ -74,7 +74,7 @@ double gainExtract(double RX_amp, int atten){
     double TX_amp = 0;
     if (atten) {TX_amp = 2048;}
     else{TX_amp = 4096;}
-    return (double) 20*log10(RX_amp/TX_amp);
+    return (double) 20.0 *log10(RX_amp/TX_amp);
 }
 
 double phaseExtract(volatile  uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency){

@@ -46,8 +46,8 @@ int adcConversionGAIN(uint16_t* buffer, int num_samples) {
     return num_samples;
 }
 
-int adcConversionPHASE(int num_zero_cross) {
-    unit16_t phase_buffer = 0;
+void adcConversionPHASE(int num_zero_cross) {
+    uint16_t phase_buffer = 0;
     int above_thresh = 0;
     int below_thresh = 0;
     for (int i = 0; i < NUM_ZERO_CROSS; i++) {
@@ -55,7 +55,7 @@ int adcConversionPHASE(int num_zero_cross) {
         ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
         while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
         phase_buffer = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
-        if ((phase_buffer = ZC_THRESHOLD) && (above_thresh)){
+        if ((phase_buffer == ZC_THRESHOLD) && (above_thresh)){
           above_thresh = 0;
           if (zero_cross_count < NUM_ZERO_CROSS) {  // Add bounds check
                 RX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
@@ -66,7 +66,7 @@ int adcConversionPHASE(int num_zero_cross) {
     }
     ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
-    return num_samples;
+    return num_zero_cross;
 }
 
 /*
@@ -232,11 +232,16 @@ int main(void) {
 
   int num_samp_collected = 0;
   uint16_t adc_samples[MAX_SAMPLES];
+
+  // gain
   double amp_samples[NUM_FREQUENCIES];
   double gain_samples[NUM_FREQUENCIES];
-  double phase_samples[NUM_FREQUENCIES];
 
-  while((i < NUM_FREQUENCIES)){ // && !digitalRead(SWEEP_DONE)
+  // phase
+  double phase_samples[NUM_FREQUENCIES];
+  uint32_t zero_cross_times[NUM_ZERO_CROSS];
+
+  while(i < NUM_FREQUENCIES){ // && !digitalRead(SWEEP_DONE)
     //digitalWrite(GPIO_LED,GPIO_HIGH);
 
     digitalWrite(MCU_READY, GPIO_HIGH);
@@ -251,7 +256,16 @@ int main(void) {
     // Reset and start the zero crossing timer
     zero_cross_count = 0;
 
-    num_samp_collected = adcConversion(adc_samples, MAX_SAMPLES);
+    // Collect ADC samples for gain calculation
+    num_samp_collected = adcConversionGAIN(adc_samples, MAX_SAMPLES);
+
+    // Calculate amplitude and gain
+    amp_samples[i] = amplitudeExtract(adc_samples, num_samp_collected);
+    gain_samples[i] = gainExtract(amp_samples[i], half_wave);
+
+    // Find zero crossing times for phase calculation
+    //in = adcConversionPHASE(zero_cross_times);
+
     
     // Stop the timer after sampling
     ZERO_CROSS_TIM->CR1 &= ~TIM_CR1_CEN;  // Stop timer
@@ -261,6 +275,7 @@ int main(void) {
     gain_samples[i] = (double)gainExtract(amp_samples[i], half_wave);
     phase_samples[i] = (double)phaseExtract(RX_zc_times, TX_zc_times, frequency_table[i]);
     i++;
+    
     digitalWrite(MCU_DONE, GPIO_HIGH);
     delay_millis(MILLI_TIM, 100);
     digitalWrite(MCU_DONE, GPIO_LOW);
