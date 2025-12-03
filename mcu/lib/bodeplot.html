@@ -130,16 +130,17 @@
             for (let i = 0; i < gain.length; i++) {
                 ctx.beginPath();
                 // use log10 to map frequencies to X positions
-                const log_data_x = Math.log10(data_x[i]);
+                const log_data_x = Math.log10(freqs[i]);
                 ctx.arc(X(log_data_x), Y(gain[i]), 3, 0, 2 * Math.PI);
                 ctx.fill();
             }
         }
-        const data_y = [0, 0, 0, -10, -20, -30, -40];
-        const data_x = [10, 50, 750, 1000,  3000, 50000, 100000];
+        const gain_data = [0, 0, 0, -10, -20, -30, -40];
+        const phase_data = [0, 0, 0, -10, -20, -30, -40];
+        const freq_data = [10, 50, 750, 1000,  3000, 50000, 100000];
 
-        plot_2D(data_x, data_y, "phaseplot");
-        plot_2D(data_x, data_y, "gainplot");
+        plot_2D(freq_data, phase_data, "phaseplot");
+        plot_2D(freq_data, gain_data, "gainplot");
     </script>
 </body>
 </html>

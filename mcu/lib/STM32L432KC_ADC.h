@@ -36,8 +36,10 @@
 
 #define LED_HIGH 1
 #define LED_LOW 0
+#define NUM_ZERO_CROSS 2
+#define TIMER_FREQ 2000000
 
-
+#define RESOLUTION_12bit 12
 
 //uint16_t adcBuffer[NUM_FREQUENCIES][NUM_SAMPLES];
 ///////////////////////////////////////////////////////////////////////////////
@@ -45,6 +47,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 void configureADC(void);
-void adcConversion(uint16_t* buffer, int num_samples);
+//int adcConversion(uint16_t* buffer);
+double amplitudeExtract(const uint16_t * sine_array, int num_samples);
+double gainExtract(double RX_amp, int atten);
+double phaseExtract(volatile uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency);
 
 #endif

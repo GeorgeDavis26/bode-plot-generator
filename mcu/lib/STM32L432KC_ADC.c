@@ -3,10 +3,13 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include <stm32l432xx.h>
+#include <math.h>
+
 #include "STM32L432KC.h"
+#include <stm32l432xx.h>
 #include "STM32L432KC_ADC.h"
 #include "STM32L432KC_TIM.h"
+
 
 void configureADC(void) {
     ///////////////////////// ADC CLK /////////////////////////////
@@ -45,32 +48,7 @@ void configureADC(void) {
     while (ADC1->ISR & ADC_ISR_ADRDY);
 }
 
-int adcConversion(uint16_t* buffer) {
-    int i = 0;
-    // Sample until we get NUM_ZERO_CROSS crossings OR hit max buffer
-    while (zero_cross_count < NUM_ZERO_CROSS && i < MAX_SAMPLES) {
-        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
-        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
-        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
-        buffer[i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
-        
-        // Check for zero crossing in software (TX detection)
-        if(i >= 1){
-            if((buffer[i] <= ZC_THRESHOLD) && (buffer[i-1] > ZC_THRESHOLD)) {
-                if (zero_cross_count < NUM_ZERO_CROSS) {  // Add bounds check
-                    TX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
-                }
-            }
-        }
-        i++;
-    }
-    ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
-    while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
-    
-    return i; // Return actual number of samples collected
-}
-
-double amplitudeExtract(const uint16_t *sine_array, int num_samples, int res_bits){
+double amplitudeExtract(const uint16_t *sine_array, int num_samples){
     // compute DC offset (mean)
     double sum = 0.0;
     for (int i = 0; i < num_samples; i++) sum += sine_array[i];
@@ -87,18 +65,35 @@ double amplitudeExtract(const uint16_t *sine_array, int num_samples, int res_bit
 
     // compute peak to peak amplitude
     double peak_counts = rms_counts * sqrt(2.0);
-    double vref = 3.3;     
-    double scale = vref / ((1u << res_bits) - 1u);
-    return (double)(peak_counts * scale);
+//    double vref = 3.3;     
+//    double scale = vref / ((1u << RESOLUTION_12bit) - 1u);
+    return peak_counts; //(double)(peak_counts * scale);
 }
 
-double phaseExtract(const uint16_t *rx, const uint16_t *tx){
-    double phase = 0.0;
-    uint16_t phasearray[NUM_ZERO_CROSS];
+double gainExtract(double RX_amp, int atten){
+    double TX_amp = 0;
+    if (atten) {TX_amp = 2048;}
+    else{TX_amp = 4096;}
+    return (double) 20*log10(RX_amp/TX_amp);
+}
+
+double phaseExtract(volatile  uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency){
+    // Convert time differences to phase differences (in degrees)
+    double phases[NUM_ZERO_CROSS];
+    
     for (int i = 0; i < NUM_ZERO_CROSS; i++) {
-        phasearray[i] = (uint16_t)rx[i] - (uint16_t)tx[i];
-        sum += phasearray[i];
-    }
+        int32_t time_diff = (int32_t)(rx_zc_times[i] - tx_zc_times[i]);
+        // Convert time difference to phase magnitude
+        double period_counts = (double)TIMER_FREQ / frequency;
+        phases[i] = (360.0 * (double)time_diff) / period_counts;
+        // Wrap phase to [-180, 180]
+        while (phases[i] > 180.0) phases[i] -= 360.0;
+        while (phases[i] < -180.0) phases[i] += 360.0;
+        }
+
+    double sum = 0.0;
+    for (int i = 0; i < NUM_ZERO_CROSS; i++) {sum += phases[i];}
     double mean = sum / NUM_ZERO_CROSS;
-    return 0.0;
+
+    return mean;
 }

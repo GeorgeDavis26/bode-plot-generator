@@ -1,4 +1,4 @@
-// STM32L432KC_RCC.h
+// STM32F401RE_RCC.h
 // Header for RCC functions
 
 #ifndef STM32L4_RCC_H
@@ -11,7 +11,7 @@
 // Function prototypes
 ///////////////////////////////////////////////////////////////////////////////
 
-void configurePLL(void);
-void configureClock(void);
+void configurePLL();
+void configureClock();
 
 #endif
