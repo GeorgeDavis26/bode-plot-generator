@@ -65,6 +65,8 @@ module dds_dac # (
         .reset(reset),
         .mcu_ready(mcu_ready),
         .mcu_done(mcu_done),
+        .full_flag(full_flag),
+        .half_flag(half_flag),
         .dac_out(dac_out),
         .sweep_done(sweep_done),
         .phase_inc_reg(current_phase_inc)
