@@ -34,12 +34,35 @@ void EXTI9_5_IRQHandler(void){
     }
 }
 
-int adcConversion(uint16_t* buffer, int num_samples) {
+int adcConversionGAIN(uint16_t* buffer, int num_samples) {
     for (int i = 0; i < num_samples; i++) {
         ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
         ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
         while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
         buffer[i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+    }
+    ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
+    while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
+    return num_samples;
+}
+
+int adcConversionPHASE(int num_zero_cross) {
+    unit16_t phase_buffer = 0;
+    int above_thresh = 0;
+    int below_thresh = 0;
+    for (int i = 0; i < NUM_ZERO_CROSS; i++) {
+        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+        phase_buffer = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+        if ((phase_buffer = ZC_THRESHOLD) && (above_thresh)){
+          above_thresh = 0;
+          if (zero_cross_count < NUM_ZERO_CROSS) {  // Add bounds check
+                RX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+                zero_cross_count++;
+          }
+        }
+        if (phase_buffer >= UPPER_AMP){above_thresh = 1;}
     }
     ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop

@@ -40,8 +40,9 @@
 #define BUFF_LEN 32
 #define MAX_SAMPLES 10000
 #define NUM_FREQUENCIES 28
-#define NUM_ZERO_CROSS 2
-#define ZC_THRESHOLD 2063
+#define NUM_ZERO_CROSS 30 //its also in ADC.h
+#define UPPER_AMP 3000
+#define ZC_THRESHOLD 2048
 
 #define PULL_DOWN 2 
 #define PULL_UP 1

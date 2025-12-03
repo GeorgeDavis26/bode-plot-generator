@@ -36,7 +36,7 @@
 
 #define LED_HIGH 1
 #define LED_LOW 0
-#define NUM_ZERO_CROSS 2
+#define NUM_ZERO_CROSS 30 //its also in main.h!
 #define TIMER_FREQ 2000000
 
 #define RESOLUTION_12bit 12
