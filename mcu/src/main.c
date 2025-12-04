@@ -298,13 +298,14 @@ int main(void) {
     }
 
     // Send data to webpage
-    sendString(USART, webpageStart);
-    sendString(USART, phase_data_string);
-    sendString(USART, plot);
-    sendString(USART, freq_data_string);
-    sendString(USART, gain_data_plot);
-    sendString(USART, gain_data_string);
-    sendString(USART, webpageEnd);
+    sendString(USART, webpageStart);       // <!DOCTYPE html>...
+    sendString(USART, plot);               // <script>function plot_2D...const freq_data =
+    sendString(USART, freq_data_string);   // [100,200,...]
+    sendString(USART, phase_data_plot);    // ;const phase_data =
+    sendString(USART, phase_data_string);  // [-10.5,-20.3,...]
+    sendString(USART, gain_data_plot);     // ;const gain_data =
+    sendString(USART, gain_data_string);   // [-3.2,-6.1,...]
+    sendString(USART, webpageEnd);         // ;plot_2D(...);plot_2D(...)</script></body></html>
   }
 
 

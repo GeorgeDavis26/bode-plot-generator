@@ -40,7 +40,7 @@
 #define BUFF_LEN 32
 #define MAX_SAMPLES 10000
 #define NUM_FREQUENCIES 28
-#define NUM_ZERO_CROSS 30
+#define NUM_ZERO_CROSS 20
 #define ZC_THRESHOLD 2048
 
 #define PULL_DOWN 2 
@@ -170,6 +170,7 @@ char* gain_data_plot =
 
 char* webpageEnd =
 ";" 
+"plot_2D(freq_data, phase_data, \"phaseplot\");" 
 "plot_2D(freq_data, gain_data, \"gainplot\");"
 "</script>"
 "</body></html>";

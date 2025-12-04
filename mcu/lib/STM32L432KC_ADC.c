@@ -87,27 +87,38 @@ double gainExtract(double RX_amp, int atten){
     else{TX_amp = 1800;}
     return (double) 20.0 *log10(RX_amp/TX_amp);
 }
-
 float phaseExtract(volatile uint32_t* rx_zc_times, volatile uint32_t* tx_zc_times, uint32_t frequency, int num_zero_cross){
     // Convert time differences to phase differences (in degrees)
     float phase[num_zero_cross];
     
     for (int i = 0; i < num_zero_cross; i++) {
-        // FIXED: Cast to int32_t BEFORE subtraction to get proper signed result
+        // Cast to int32_t BEFORE subtraction to get proper signed result
         int32_t sample_diff = (int32_t)rx_zc_times[i] - (int32_t)tx_zc_times[i];
         
         float time_diff = ((float)sample_diff) / TIMER_FREQ; // seconds difference (can be negative)
         phase[i] = time_diff * frequency * 360.0;
-        //if (frequency > 1000){phase[i]=phase[i]+170;}
+        
+        // Wrap phase to [-180, 180] range
+        while (phase[i] > 180.0f) phase[i] -= 360.0f;
+        while (phase[i] < -180.0f) phase[i] += 360.0f;
     }
 
-    float sum = 0.0;
+    // Sum only valid phases (within ±180 degrees)
+    float sum = 0.0f;
+    int valid_count = 0;
+    
     for (int i = 0; i < num_zero_cross; i++) {
-        sum += phase[i];
+        if (phase[i] >= -180.0f && phase[i] <= 180.0f) {
+            sum += phase[i];
+            valid_count++;
+        }
     }
-    float mean = sum / num_zero_cross;
-
-    return mean;
+    
+    // Return mean of valid phases (avoid division by zero)
+    if (valid_count > 0) {
+        return sum / valid_count;
+    }
+    return 0.0f; // Return 0 if no valid phases found
 }
 
 /*
