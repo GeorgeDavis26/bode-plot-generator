@@ -12,29 +12,33 @@ Date: 12/1/25
 #include "main.h"
 
 // Global variable definitions
-volatile uint32_t RX_zc_times[NUM_ZERO_CROSS];
-volatile uint32_t TX_zc_times[NUM_ZERO_CROSS];
-volatile int zero_cross_count = 0;
+volatile uint16_t RX_ZC_TIME[NUM_ZERO_CROSS];
+volatile uint16_t TX_ZC_TIME[NUM_ZERO_CROSS];
+
+volatile int zc_count = 0;
+volatile int rx_zc_count = 0;
+volatile int tx_zc_count = 0;
 volatile int half_wave = 0 ;
-volatile int interupt_disable = 0;
+volatile int interupt_disable = 1;
 
 
 /*
 ZERO_CROSS interrupt handler, check for an interrupt then performs timer sample
 */
+/*
 void EXTI9_5_IRQHandler(void){
     if (EXTI->PR1 & (1 << gpioPinOffset(ZERO_CROSS))){ // Check if EXTI6 triggered
         EXTI->PR1 |= (1 << gpioPinOffset(ZERO_CROSS)); // Clear the interrupt flag
         // Read and store the timer counter value
         if (!interupt_disable){
-          if (zero_cross_count < NUM_ZERO_CROSS) {
-              TX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+          if (zc_count < NUM_ZERO_CROSS) {
+              TX_ZC_TIME[0] = (uint16_t)ZERO_CROSS_TIM->CNT;
           }
         }
     }
 }
-
-int adcConversionGAIN(uint16_t* buffer, int num_samples) {
+*/
+void adcConversionGAIN(uint16_t* buffer, int num_samples) {
     for (int i = 0; i < num_samples; i++) {
         ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
         ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
@@ -43,32 +47,54 @@ int adcConversionGAIN(uint16_t* buffer, int num_samples) {
     }
     ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
-    return num_samples;
 }
-
-void adcConversionPHASE(int num_zero_cross) {
+/*
+void FEadcConversionPHASE(uint16_t *rx_zc_time, int num_zero_cross) {
+    
     uint16_t phase_buffer = 0;
     int above_thresh = 0;
-    int below_thresh = 0;
-    for (int i = 0; i < NUM_ZERO_CROSS; i++) {
+    
+    while((zc_count < num_zero_cross)){
         ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
         ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
         while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
         phase_buffer = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
-        if ((phase_buffer == ZC_THRESHOLD) && (above_thresh)){
+
+        if ((phase_buffer <= ZC_THRESHOLD) && (above_thresh)){
           above_thresh = 0;
-          if (zero_cross_count < NUM_ZERO_CROSS) {  // Add bounds check
-                RX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
-                zero_cross_count++;
+          if (zc_count < num_zero_cross) {  // Add bounds check
+                rx_zc_time[0] = (uint16_t)ZERO_CROSS_TIM->CNT;
           }
         }
-        if (phase_buffer >= UPPER_AMP){above_thresh = 1;}
+        if (phase_buffer > ZC_THRESHOLD){above_thresh = 1;}
     }
     ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
-    return num_zero_cross;
 }
 
+void REadcConversionPHASE(uint16_t *rx_zc_time, int num_zero_cross) {
+    
+    uint16_t phase_buffer = 0;
+    int below_thresh = 0;
+    
+    while((zc_count < num_zero_cross)){
+        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+        phase_buffer = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+
+        if ((phase_buffer >= ZC_THRESHOLD) && (below_thresh)){
+          below_thresh = 0;
+          if (zc_count < num_zero_cross) {  // Add bounds check
+                rx_zc_time[0] = (uint16_t)ZERO_CROSS_TIM->CNT;
+          }
+        }
+        if (phase_buffer < ZC_THRESHOLD){below_thresh = 1;}
+    }
+    ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
+    while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
+}
+*/
 /*
 int adcConversion(uint16_t* buffer) {
     int i = 0;
@@ -107,10 +133,6 @@ void config(void){
   gpioEnable(GPIO_PORT_A);
   gpioEnable(GPIO_PORT_B);
   gpioEnable(GPIO_PORT_C);
-
-  //GPIO mode
-  //pinMode(GPIO_BUTTON, GPIO_INPUT);
-  //GPIOA->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD4, 0b01); // Set PA4 (GPIO_BUTTON) as pull-up
   
   pinMode(GPIO_LED, GPIO_OUTPUT); //PB3
   
@@ -138,10 +160,10 @@ void config(void){
   GPIOA->PUPDR |= _VAL2FLD(GPIO_PUPDR_PUPD6, PULL_DOWN); //PA6
   
   //MCU ready to take new ADC samples at a different frequency
-  pinMode(MCU_READY, GPIO_OUTPUT); //PA10
+  pinMode(MCU_READY, GPIO_OUTPUT); //PA12
 
   //MCU done taking samples and ready to go to a new frequency
-  pinMode(MCU_DONE, GPIO_OUTPUT); //PA9
+  pinMode(MCU_DONE, GPIO_OUTPUT); //PA0
 
   //---------------Timer Enables---------------//
   RCC->APB2ENR |= RCC_APB2ENR_TIM15EN; //MICRO TIM
@@ -156,7 +178,7 @@ void config(void){
 
 
   //---------------Interrupts---------------//
-
+/*
   //Enable SYSCFG clock domain in RCC for EXTI interrupts
   RCC->APB2ENR |= RCC_APB2ENR_SYSCFGEN;
   // Configure EXTICR for the zero crossing flag
@@ -169,7 +191,7 @@ void config(void){
   EXTI->RTSR1 |= (1 << gpioPinOffset(ZERO_CROSS));// Enable rising edge trigger
   // Turn on EXTI interrupt in NVIC_ISER
   NVIC->ISER[0] |= (1 << EXTI9_5_IRQn);  // Changed from EXTI1_IRQn
-
+*/
   //---------------MCO---------------//
     pinMode(MCO_PIN, GPIO_ALT);
     GPIOA->AFR[1] |= _VAL2FLD(GPIO_AFRH_AFSEL8, AF0);     // PA8 AF0 = MCO
@@ -181,7 +203,7 @@ void config(void){
 
 };
 
-void doubleArray2String(double* array, char* string){
+void floatArray2String(float* array, char* string){
   char temp_buffer[40];
   string[0] = '\0'; // Initialize to empty string
   strcat(string, "["); // beginning of array
@@ -217,80 +239,78 @@ void uint32Array2String(uint32_t* array, char* string){
 int main(void) {
   configureFlash();
   configureClock();
-  //SystemCoreClockUpdate();
   config();
 
   // Wait for INIT_BODE to go high before starting
   while (digitalRead(INIT_BODE));
   interupt_disable = 1;
-  // Wait for amplitude scalar to be chose
+  // Wait for amplitude scalar to be chosen
   while (!(digitalRead(HALF_ATTEN) || digitalRead(FULL_WAVE)));
   if(digitalRead(HALF_ATTEN)){half_wave = !half_wave;}
 
 
   int i=0;
-
-  int num_samp_collected = 0;
+  int high_freq = 0;
   uint16_t adc_samples[MAX_SAMPLES];
 
   // gain
-  double amp_samples[NUM_FREQUENCIES];
-  double gain_samples[NUM_FREQUENCIES];
+  float amp_samples[NUM_FREQUENCIES];
+  float gain_samples[NUM_FREQUENCIES];
 
-  // phase
-  double phase_samples[NUM_FREQUENCIES];
-  uint32_t zero_cross_times[NUM_ZERO_CROSS];
+  //phase
+  //float phase_samples[NUM_FREQUENCIES];
 
-  while(i < NUM_FREQUENCIES){ // && !digitalRead(SWEEP_DONE)
-    //digitalWrite(GPIO_LED,GPIO_HIGH);
-
+  while(i < NUM_FREQUENCIES){
+    //---------------TOGGLE MCU_RDY---------------//
     digitalWrite(MCU_READY, GPIO_HIGH);
-
-    interupt_disable = 0;
-    
-    delay_millis(MILLI_TIM, 100);
+    delay_millis(MILLI_TIM, 1000);
     digitalWrite(MCU_READY, GPIO_LOW);
-    ZERO_CROSS_TIM->CNT = 0;  // Reset counter to 0
-    ZERO_CROSS_TIM->CR1 |= TIM_CR1_CEN;  // Start timer
-    
-    // Reset and start the zero crossing timer
-    zero_cross_count = 0;
+
+    //---------------GAIN EXTRACT---------------//
 
     // Collect ADC samples for gain calculation
-    num_samp_collected = adcConversionGAIN(adc_samples, MAX_SAMPLES);
-
-    // Calculate amplitude and gain
-    amp_samples[i] = amplitudeExtract(adc_samples, num_samp_collected);
+    adcConversionGAIN(adc_samples, MAX_SAMPLES);
+    amp_samples[i] = amplitudeExtractRMS(adc_samples, MAX_SAMPLES);
     gain_samples[i] = gainExtract(amp_samples[i], half_wave);
 
-    // Find zero crossing times for phase calculation
-    //in = adcConversionPHASE(zero_cross_times);
+    //---------------PHASE EXTRACT---------------//
+    /*
+    // Start all of the counter and interrupt enables
+    zc_count = 0;
+    tx_zc_count = 0;
+    rx_zc_count = 0;
+    interupt_disable = 0;
+    ZERO_CROSS_TIM->CNT = 0;  // Reset counter to 0
+    ZERO_CROSS_TIM->CR1 |= TIM_CR1_CEN;  // Start timer
 
-    
+    // Find zero crossing times for phase calculation
+    FEadcConversionPHASE(RX_ZC_TIME, NUM_ZERO_CROSS);
+
     // Stop the timer after sampling
     ZERO_CROSS_TIM->CR1 &= ~TIM_CR1_CEN;  // Stop timer
     interupt_disable = 1;
     delay_millis(MILLI_TIM, 100);
-    amp_samples[i] = (double)amplitudeExtract(adc_samples, num_samp_collected);
-    gain_samples[i] = (double)gainExtract(amp_samples[i], half_wave);
-    phase_samples[i] = (double)phaseExtract(RX_zc_times, TX_zc_times, frequency_table[i]);
+
+    phase_samples[i] = (double)phaseExtract(RX_ZC_TIME, TX_ZC_TIME, frequency_table[i], NUM_ZERO_CROSS);
+    */
+
+    //---------------TOGGLE MCU_DONE---------------//
     i++;
-    
     digitalWrite(MCU_DONE, GPIO_HIGH);
     delay_millis(MILLI_TIM, 100);
     digitalWrite(MCU_DONE, GPIO_LOW);
 
   };
-
   digitalWrite(GPIO_LED,GPIO_LOW);
-  
+
+
   USART_TypeDef * USART = initUSART(USART1_ID, 125000);
   char phase_data_string[(NUM_FREQUENCIES * 10) + 3];
   char gain_data_string[(NUM_FREQUENCIES * 10) + 3];
   char freq_data_string[(NUM_FREQUENCIES * 10) + 3];
 
-  doubleArray2String(phase_samples, phase_data_string);
-  doubleArray2String(gain_samples, gain_data_string);
+  //floatArray2String(phase_samples, phase_data_string);
+  floatArray2String(gain_samples, gain_data_string);
   uint32Array2String(frequency_table, freq_data_string);
   
   while(1) {
@@ -304,12 +324,12 @@ int main(void) {
 
     // Send data to webpage
     sendString(USART, webpageStart);
-    sendString(USART, phase_data_string);
-    sendString(USART, scriptEnd);
+    //sendString(USART, phase_data_string);
+    sendString(USART, plot);
+    sendString(USART, freq_data_string);
+    sendString(USART, gain_data_plot);
     sendString(USART, gain_data_string);
     sendString(USART, webpageEnd);
-    sendString(USART, freq_data_string);
-    sendString(USART, dataEnd);
   }
 
 

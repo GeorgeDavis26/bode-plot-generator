@@ -48,7 +48,7 @@ void configureADC(void) {
     while (ADC1->ISR & ADC_ISR_ADRDY);
 }
 
-double amplitudeExtract(const uint16_t *sine_array, int num_samples){
+double amplitudeExtractRMS(const uint16_t *sine_array, int num_samples){
     // compute DC offset (mean)
     double sum = 0.0;
     for (int i = 0; i < num_samples; i++) sum += sine_array[i];
@@ -65,35 +65,80 @@ double amplitudeExtract(const uint16_t *sine_array, int num_samples){
 
     // compute peak to peak amplitude
     double peak_counts = rms_counts * sqrt(2.0);
-//    double vref = 3.3;     
-//    double scale = vref / ((1u << RESOLUTION_12bit) - 1u);
-    return peak_counts; //(double)(peak_counts * scale);
+    return peak_counts;
+}
+
+
+double amplitudeExtractPP(const uint16_t *sine_array, int num_samples){
+    uint16_t max_value = sine_array[0];
+    uint16_t min_value = sine_array[0];
+    
+    // Find max and min values
+    for (int i = 1; i < num_samples; i++) {
+        if (sine_array[i] > max_value) max_value = sine_array[i];
+        if (sine_array[i] < min_value) min_value = sine_array[i];
+    }
+    return (double)(max_value - min_value) / 2.0;
 }
 
 double gainExtract(double RX_amp, int atten){
     double TX_amp = 0;
-    if (atten) {TX_amp = 2048;}
-    else{TX_amp = 4096;}
+    if (atten) {TX_amp = 900;}
+    else{TX_amp = 1800;}
     return (double) 20.0 *log10(RX_amp/TX_amp);
 }
 
-double phaseExtract(volatile  uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency){
-    // Convert time differences to phase differences (in degrees)
-    double phases[NUM_ZERO_CROSS];
+// double phaseExtract(volatile  uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency, int num_zero_cross){
+//    // Convert time differences to phase differences (in degrees)
+//    double phases[num_zero_cross];
     
-    for (int i = 0; i < NUM_ZERO_CROSS; i++) {
-        int32_t time_diff = (int32_t)(rx_zc_times[i] - tx_zc_times[i]);
-        // Convert time difference to phase magnitude
-        double period_counts = (double)TIMER_FREQ / frequency;
-        phases[i] = (360.0 * (double)time_diff) / period_counts;
-        // Wrap phase to [-180, 180]
-        while (phases[i] > 180.0) phases[i] -= 360.0;
-        while (phases[i] < -180.0) phases[i] += 360.0;
-        }
+//    for (int i = 0; i < num_zero_cross; i++) {
+//        int32_t time_diff = (int32_t)(rx_zc_times[i] - tx_zc_times[i]);
+//        // Convert time difference to phase magnitude
+//        double timer_ticks = (double)TIMER_FREQ / frequency; // Calculates how many timer ticks make up one full wave (360 deg)
+//        phases[i] = (360.0 * (double)time_diff) / timer_ticks; // Ratios the time difference against the full wave period
+//        // Wrap phase to [-180, 180]
+//        while (phases[i] > 180.0) phases[i] -= 360.0;
+//        while (phases[i] < -180.0) phases[i] += 360.0;
+//        }
 
-    double sum = 0.0;
-    for (int i = 0; i < NUM_ZERO_CROSS; i++) {sum += phases[i];}
-    double mean = sum / NUM_ZERO_CROSS;
+//    double sum = 0.0;
+//    for (int i = 0; i < num_zero_cross; i++) {sum += phases[i];}
+//    double mean = sum / num_zero_cross;
 
-    return mean;
+//    return mean;
+// }
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+double phaseExtract(volatile uint16_t* rx_zc_time, volatile uint16_t* tx_zc_time, uint32_t frequency, int num_zero_cross){
+    double sum_sin = 0.0;
+    double sum_cos = 0.0;
+    
+    // Calculate period in timer ticks
+    double period_ticks = (double)TIMER_FREQ / (double)frequency; 
+
+    for (int i = 0; i < num_zero_cross; i++) {
+        int32_t time_diff = (int32_t)(rx_zc_time[i] - tx_zc_time[i]);
+        
+        // Calculate Phase in Degrees
+        double phase_deg = (360.0 * (double)time_diff) / period_ticks;
+
+        // Convert to Radians for vector math
+        double phase_rad = phase_deg * (M_PI / 180.0);
+
+        // Accumulate vector components
+        sum_sin += sin(phase_rad);
+        sum_cos += cos(phase_rad);
+    }
+
+    // Calculate average angle using atan2 (returns -PI to +PI)
+    double mean_rad = atan2(sum_sin, sum_cos);
+
+    // Convert back to degrees
+    double mean_deg = mean_rad * (180.0 / M_PI);
+
+    return mean_deg;
 }
