@@ -40,7 +40,7 @@
 #define BUFF_LEN 32
 #define MAX_SAMPLES 10000
 #define NUM_FREQUENCIES 28
-#define NUM_ZERO_CROSS 20
+#define NUM_ZERO_CROSS 2
 #define ZC_THRESHOLD 2048
 
 #define PULL_DOWN 2 

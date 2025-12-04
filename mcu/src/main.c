@@ -31,9 +31,9 @@ void EXTI9_5_IRQHandler(void){
         EXTI->PR1 |= (1 << gpioPinOffset(ZERO_CROSS)); // Clear the interrupt flag
         // Read and store the timer counter value
         if (!interupt_disable){
-          if (zc_count < NUM_ZERO_CROSS) {
-              TX_ZC_TIME[zc_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
-              zc_count++;
+          if (tx_zc_count < NUM_ZERO_CROSS) {
+              TX_ZC_TIME[tx_zc_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+              tx_zc_count++;
           }
         }
     }
@@ -78,7 +78,7 @@ void FEadcConversionPHASE(uint32_t *rx_zc_time, int num_zero_cross) {
     uint16_t phase_buffer = 0;
     int above_thresh = 0;
     
-    while((zc_count < num_zero_cross)){
+    while((rx_zc_count < num_zero_cross)){
         ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
         ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
         while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
@@ -86,8 +86,9 @@ void FEadcConversionPHASE(uint32_t *rx_zc_time, int num_zero_cross) {
 
         if ((phase_buffer <= ZC_THRESHOLD) && (above_thresh)){
           above_thresh = 0;
-          if (zc_count < num_zero_cross) {  // Add bounds check
-                rx_zc_time[zc_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+          if (rx_zc_count < num_zero_cross) {  // Add bounds check
+                rx_zc_time[rx_zc_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+                rx_zc_count++;
           }
         }
         if (phase_buffer > ZC_THRESHOLD){above_thresh = 1;}
@@ -250,20 +251,21 @@ int main(void) {
     //---------------PHASE EXTRACT---------------//
     
     // Start all of the counter and interrupt enables
-    zc_count = 0;
     tx_zc_count = 0;
     rx_zc_count = 0;
     interupt_disable = 0;
     ZERO_CROSS_TIM->CNT = 0;  // Reset counter to 0
     ZERO_CROSS_TIM->CR1 |= TIM_CR1_CEN;  // Start timer
 
+    while(tx_zc_count < NUM_ZERO_CROSS);
+
+    interupt_disable = 1;
     // Find zero crossing times for phase calculation
-    REadcConversionPHASE(RX_ZC_TIME, NUM_ZERO_CROSS);
+    FEadcConversionPHASE(RX_ZC_TIME, NUM_ZERO_CROSS);
 
     // Stop the timer after sampling
     //while(!TX_ZC_TIME);
     ZERO_CROSS_TIM->CR1 &= ~TIM_CR1_CEN;  // Stop timer
-    interupt_disable = 1;
     delay_millis(MILLI_TIM, 100);
 
     phase_samples[i] = (double)phaseExtract(RX_ZC_TIME, TX_ZC_TIME, frequency_table[i], NUM_ZERO_CROSS);

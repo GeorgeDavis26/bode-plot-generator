@@ -95,7 +95,7 @@ float phaseExtract(volatile uint32_t* rx_zc_times, volatile uint32_t* tx_zc_time
         // Cast to int32_t BEFORE subtraction to get proper signed result
         int32_t sample_diff = (int32_t)rx_zc_times[i] - (int32_t)tx_zc_times[i];
         
-        float time_diff = ((float)sample_diff) / TIMER_FREQ; // seconds difference (can be negative)
+        float time_diff = ((float)sample_diff) / TIMER_FREQ;
         phase[i] = time_diff * frequency * 360.0;
         
         // Wrap phase to [-180, 180] range
@@ -105,20 +105,14 @@ float phaseExtract(volatile uint32_t* rx_zc_times, volatile uint32_t* tx_zc_time
 
     // Sum only valid phases (within ±180 degrees)
     float sum = 0.0f;
-    int valid_count = 0;
     
     for (int i = 0; i < num_zero_cross; i++) {
         if (phase[i] >= -180.0f && phase[i] <= 180.0f) {
             sum += phase[i];
-            valid_count++;
         }
     }
     
-    // Return mean of valid phases (avoid division by zero)
-    if (valid_count > 0) {
-        return sum / valid_count;
-    }
-    return 0.0f; // Return 0 if no valid phases found
+    return sum/num_zero_cross; // Return 0 if no valid phases found
 }
 
 /*
