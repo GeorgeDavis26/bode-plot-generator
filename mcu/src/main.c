@@ -50,6 +50,29 @@ void adcConversionGAIN(uint16_t* buffer, int num_samples) {
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
 }
 
+void REadcConversionPHASE(uint32_t *rx_zc_time, int num_zero_cross) {
+    
+    uint16_t phase_buffer = 0;
+    int below_thresh = 0;
+    
+    while((zc_count < num_zero_cross)){
+        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+        phase_buffer = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+
+        if ((phase_buffer >= ZC_THRESHOLD) && (below_thresh)){
+          below_thresh = 0;
+          if (zc_count < num_zero_cross) {  // Add bounds check
+                rx_zc_time[zc_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+          }
+        }
+        if (phase_buffer < ZC_THRESHOLD){below_thresh = 1;}
+    }
+    ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
+    while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
+}
+
 void FEadcConversionPHASE(uint32_t *rx_zc_time, int num_zero_cross) {
     
     uint16_t phase_buffer = 0;
@@ -235,9 +258,10 @@ int main(void) {
     ZERO_CROSS_TIM->CR1 |= TIM_CR1_CEN;  // Start timer
 
     // Find zero crossing times for phase calculation
-    FEadcConversionPHASE(RX_ZC_TIME, NUM_ZERO_CROSS);
+    REadcConversionPHASE(RX_ZC_TIME, NUM_ZERO_CROSS);
 
     // Stop the timer after sampling
+    //while(!TX_ZC_TIME);
     ZERO_CROSS_TIM->CR1 &= ~TIM_CR1_CEN;  // Stop timer
     interupt_disable = 1;
     delay_millis(MILLI_TIM, 100);

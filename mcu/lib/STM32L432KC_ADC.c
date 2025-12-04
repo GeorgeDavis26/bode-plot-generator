@@ -88,25 +88,26 @@ double gainExtract(double RX_amp, int atten){
     return (double) 20.0 *log10(RX_amp/TX_amp);
 }
 
-double phaseExtract(volatile  uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency, int num_zero_cross){
-   // Convert time differences to phase differences (in degrees)
-   double phases[num_zero_cross];
+float phaseExtract(volatile uint32_t* rx_zc_times, volatile uint32_t* tx_zc_times, uint32_t frequency, int num_zero_cross){
+    // Convert time differences to phase differences (in degrees)
+    float phase[num_zero_cross];
     
-   for (int i = 0; i < num_zero_cross; i++) {
-       int32_t time_diff = (int32_t)(rx_zc_times[i] - tx_zc_times[i]);
-       // Convert time difference to phase magnitude
-       double timer_ticks = (double)TIMER_FREQ / frequency; // Calculates how many timer ticks make up one full wave (360 deg)
-       phases[i] = (360.0 * (double)time_diff) / timer_ticks; // Ratios the time difference against the full wave period
-       // Wrap phase to [-180, 180]
-       while (phases[i] > 180.0) phases[i] -= 360.0;
-       while (phases[i] < -180.0) phases[i] += 360.0;
-       }
+    for (int i = 0; i < num_zero_cross; i++) {
+        // FIXED: Cast to int32_t BEFORE subtraction to get proper signed result
+        int32_t sample_diff = (int32_t)rx_zc_times[i] - (int32_t)tx_zc_times[i];
+        
+        float time_diff = ((float)sample_diff) / TIMER_FREQ; // seconds difference (can be negative)
+        phase[i] = time_diff * frequency * 360.0;
+        if (frequency > 1000){phase[i]=phase[i]+170;}
+    }
 
-   double sum = 0.0;
-   for (int i = 0; i < num_zero_cross; i++) {sum += phases[i];}
-   double mean = sum / num_zero_cross;
+    float sum = 0.0;
+    for (int i = 0; i < num_zero_cross; i++) {
+        sum += phase[i];
+    }
+    float mean = sum / num_zero_cross;
 
-   return mean;
+    return mean;
 }
 
 /*

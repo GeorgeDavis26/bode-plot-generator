@@ -51,5 +51,5 @@ double amplitudeExtractRMS(const uint16_t * sine_array, int num_samples);
 double amplitudeExtractPP(const uint16_t * sine_array, int num_samples);
 double gainExtract(double RX_amp, int atten);
 
-double phaseExtract(volatile uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency,int num_zero_cross);
+float phaseExtract(volatile uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency,int num_zero_cross);
 #endif
