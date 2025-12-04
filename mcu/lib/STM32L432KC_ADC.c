@@ -98,7 +98,7 @@ float phaseExtract(volatile uint32_t* rx_zc_times, volatile uint32_t* tx_zc_time
         
         float time_diff = ((float)sample_diff) / TIMER_FREQ; // seconds difference (can be negative)
         phase[i] = time_diff * frequency * 360.0;
-        if (frequency > 1000){phase[i]=phase[i]+170;}
+        //if (frequency > 1000){phase[i]=phase[i]+170;}
     }
 
     float sum = 0.0;
