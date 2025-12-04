@@ -178,8 +178,10 @@ char* webpageEnd =
 
 int inString(char request[], char des[]);
 void adcConversionGAIN(uint16_t* buffer, int num_samples);
-void FEadcConversionPHASE(uint16_t* buffer, int num_samples);
-void REadcConversionPHASE(uint16_t* buffer, int num_samples);
+
+void FEadcConversionPHASE(uint32_t* buffer, int num_samples);
+//void REadcConversionPHASE(uint32_t* buffer, int num_samples);
+
 //int adcConversion(uint16_t* buffer);
 void config(void);
 int main(void);

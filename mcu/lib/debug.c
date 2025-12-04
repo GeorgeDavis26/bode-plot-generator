@@ -172,3 +172,58 @@ char array2String2d(uint16_t array){
   strcat(string, "]"); // End of array    
   return string;
 }
+
+
+
+/*
+int adcConversion(uint16_t* buffer) {
+    int i = 0;
+    // Sample until we get NUM_ZERO_CROSS crossings OR hit max buffer
+    while (i < MAX_SAMPLES) {
+        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+        //delay_micros(MICRO_TIM,  1); //reduce sample frequency a bit so we don't overflow into PLL with 100 Hz max sample
+        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+        buffer[i] = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+        
+        // Check for zero crossing in software (TX detection)
+        if (zero_cross_count < NUM_ZERO_CROSS) {  // Add bounds check
+          if((buffer[i] <= ZC_THRESHOLD) && (buffer[i-1] > ZC_THRESHOLD)) {
+                RX_zc_times[zero_cross_count] = (uint32_t)ZERO_CROSS_TIM->CNT;
+                zero_cross_count++;
+            }
+          }
+        }
+        i++;
+    ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
+    while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
+    
+    return i; // Return actual number of samples collected
+}
+
+*/
+
+/*
+void REadcConversionPHASE(uint16_t *rx_zc_time, int num_zero_cross) {
+    
+    uint16_t phase_buffer = 0;
+    int below_thresh = 0;
+    
+    while((zc_count < num_zero_cross)){
+        ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
+        ADC1->CR |= ADC_CR_ADSTART;    // Start continuous conversions
+        while(!(ADC1->ISR & ADC_ISR_EOC));  // Wait for end of conversion flag
+        phase_buffer = (uint16_t)ADC1->DR;  // Read the data register, reading clears EOC
+
+        if ((phase_buffer >= ZC_THRESHOLD) && (below_thresh)){
+          below_thresh = 0;
+          if (zc_count < num_zero_cross) {  // Add bounds check
+                rx_zc_time[0] = (uint16_t)ZERO_CROSS_TIM->CNT;
+          }
+        }
+        if (phase_buffer < ZC_THRESHOLD){below_thresh = 1;}
+    }
+    ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
+    while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
+}
+*/

@@ -88,32 +88,33 @@ double gainExtract(double RX_amp, int atten){
     return (double) 20.0 *log10(RX_amp/TX_amp);
 }
 
-// double phaseExtract(volatile  uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency, int num_zero_cross){
-//    // Convert time differences to phase differences (in degrees)
-//    double phases[num_zero_cross];
+double phaseExtract(volatile  uint32_t *rx_zc_times, volatile uint32_t *tx_zc_times, uint32_t frequency, int num_zero_cross){
+   // Convert time differences to phase differences (in degrees)
+   double phases[num_zero_cross];
     
-//    for (int i = 0; i < num_zero_cross; i++) {
-//        int32_t time_diff = (int32_t)(rx_zc_times[i] - tx_zc_times[i]);
-//        // Convert time difference to phase magnitude
-//        double timer_ticks = (double)TIMER_FREQ / frequency; // Calculates how many timer ticks make up one full wave (360 deg)
-//        phases[i] = (360.0 * (double)time_diff) / timer_ticks; // Ratios the time difference against the full wave period
-//        // Wrap phase to [-180, 180]
-//        while (phases[i] > 180.0) phases[i] -= 360.0;
-//        while (phases[i] < -180.0) phases[i] += 360.0;
-//        }
+   for (int i = 0; i < num_zero_cross; i++) {
+       int32_t time_diff = (int32_t)(rx_zc_times[i] - tx_zc_times[i]);
+       // Convert time difference to phase magnitude
+       double timer_ticks = (double)TIMER_FREQ / frequency; // Calculates how many timer ticks make up one full wave (360 deg)
+       phases[i] = (360.0 * (double)time_diff) / timer_ticks; // Ratios the time difference against the full wave period
+       // Wrap phase to [-180, 180]
+       while (phases[i] > 180.0) phases[i] -= 360.0;
+       while (phases[i] < -180.0) phases[i] += 360.0;
+       }
 
-//    double sum = 0.0;
-//    for (int i = 0; i < num_zero_cross; i++) {sum += phases[i];}
-//    double mean = sum / num_zero_cross;
+   double sum = 0.0;
+   for (int i = 0; i < num_zero_cross; i++) {sum += phases[i];}
+   double mean = sum / num_zero_cross;
 
-//    return mean;
-// }
+   return mean;
+}
 
+/*
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
 
-double phaseExtract(volatile uint16_t* rx_zc_time, volatile uint16_t* tx_zc_time, uint32_t frequency, int num_zero_cross){
+double phaseExtract(volatile uint32_t* rx_zc_time, volatile uint32_t* tx_zc_time, uint32_t frequency, int num_zero_cross){
     double sum_sin = 0.0;
     double sum_cos = 0.0;
     
@@ -142,3 +143,4 @@ double phaseExtract(volatile uint16_t* rx_zc_time, volatile uint16_t* tx_zc_time
 
     return mean_deg;
 }
+*/
