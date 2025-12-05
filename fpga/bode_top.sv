@@ -1,0 +1,106 @@
+// authors: George Davis and Matthew Molinar
+// emails: gdavis@hmc.edu and mmolinar@hmc.edu
+// date created: 11/22/2025
+
+// bode_top.sv
+
+/////////////////////////////////////////////
+// Bode Plot Generator Top Module
+/////////////////////////////////////////////
+
+module bode_top #(
+    // DDS Parameters
+    parameter int    DAC_WIDTH = 8,                 // Bit width for external DAC
+    parameter int    PHASE_WIDTH = 32,              // Width phase accumulator
+    parameter int    FULL_WAVE = 256,               // Size of full sine wave
+    parameter        LUT_FILE = "dds_lut.txt",      // ROM for LUT
+    parameter        DAC_MIDPOINT = 8'h80,          // DAC midpoint (128 for 8-bit)
+
+    // Sweep Controller Parameters
+    parameter int    PHASE_INC_MIN = 42952,         // Minimum phase increment (~100 Hz at 10MHz)
+    parameter int    PHASE_INC_MAX = 42949673,      // Maximum phase increment (~100 kHz at 10MHz)
+    
+    // Decade boundaries for phase increments
+    parameter int    PHASE_INC_1KHZ = 429497,       // 1 kHz boundary
+    parameter int    PHASE_INC_10KHZ = 4294967,     // 10 kHz boundary
+    
+    // Step sizes for each decade
+    parameter int    PHASE_INC_STEP_100HZ = 42952,  // 100 Hz steps (100Hz to 1kHz)
+    parameter int    PHASE_INC_STEP_1KHZ = 429497,  // 1 kHz steps (1kHz to 10kHz)
+    parameter int    PHASE_INC_STEP_10KHZ = 4294967 // 10 kHz steps (10kHz to 100kHz)
+) (
+    input  logic clk,                               // External clock (PIN A8 : 19)
+    input  logic reset,                             // Active low reset (PIN 9)
+
+    // MCU Interface
+    input  logic mcu_ready,                         // MCU is ready to collect data (PIN A12 : 11)
+    input logic  mcu_done,                          // MCU is done collecting data  (PIN A0 :13)
+    input  logic half_flag,                         // Half amplitude request from MCU (43)
+    input  logic full_flag,                         // Full amplitude request from MCU (34)
+
+    // DAC Interface
+    output logic [DAC_WIDTH-1:0] dac_data,          // Data to DAC
+    output logic dac_wr,                            // Write strobe to DAC (active low)
+
+    // GPIO outputs to MCU
+    output logic zero_cross_gpio,                   // Zero crossing detected (PIN A6 : 27)
+    output logic sweep_done_gpio,                   // Sweep completion flag (PIN B5 : 10)
+    output logic amp_gpio1,                         // Half amplitude control GPIO 1 (PIN B4 : 12)
+    output logic amp_gpio2,                         // Full amplitude control GPIO 2 (PIN A11 : 20) 
+    output logic init_bode                         // start bode on MCU (PIN B6 : 18)
+);
+
+    // Internal signals
+    logic sweep_done;                               // Sweep completion from sweep controller
+    logic [PHASE_WIDTH-1:0] current_phase_inc;     // Current phase increment for monitoring
+
+    // init_bode signal
+    assign init_bode = reset;
+
+    // Main DDS and DAC controller with sweep functionality
+
+    dds_dac #(
+        .DAC_WIDTH(DAC_WIDTH),
+        .PHASE_WIDTH(PHASE_WIDTH),
+        .FULL_WAVE(FULL_WAVE),
+        .LUT_FILE(LUT_FILE),
+        .DAC_MIDPOINT(DAC_MIDPOINT),
+        .PHASE_INC_MIN(PHASE_INC_MIN),
+        .PHASE_INC_MAX(PHASE_INC_MAX),
+        .PHASE_INC_1KHZ(PHASE_INC_1KHZ),
+        .PHASE_INC_10KHZ(PHASE_INC_10KHZ),
+        .PHASE_INC_STEP_100HZ(PHASE_INC_STEP_100HZ),
+        .PHASE_INC_STEP_1KHZ(PHASE_INC_STEP_1KHZ),
+        .PHASE_INC_STEP_10KHZ(PHASE_INC_STEP_10KHZ)
+    ) dds_dac_inst (
+        .clk(clk),
+        .reset(reset),
+        .mcu_ready(mcu_ready),
+        .mcu_done(mcu_done),
+        .full_flag(full_flag),
+        .half_flag(half_flag),
+        .dac_data(dac_data),
+        .dac_wr(dac_wr),
+        .sweep_done(sweep_done),
+        .current_phase_inc(current_phase_inc)
+    );
+
+    // Interface module for MCU communication
+    bode_interface #(
+        .DAC_WIDTH(DAC_WIDTH),
+        .PHASE_WIDTH(PHASE_WIDTH),
+        .DAC_MIDPOINT(DAC_MIDPOINT)
+    ) mcu_interface (
+        .clk(clk),
+        .reset(reset),
+        .dac_out(dac_data),
+        .phase_inc(current_phase_inc),
+        .sweep_done(sweep_done),
+        .half_flag(half_flag),
+        .full_flag(full_flag),
+        .zero_cross_gpio(zero_cross_gpio),
+        .sweep_done_gpio(sweep_done_gpio),
+        .amp_gpio1(amp_gpio1),
+        .amp_gpio2(amp_gpio2)
+    );
+endmodule
