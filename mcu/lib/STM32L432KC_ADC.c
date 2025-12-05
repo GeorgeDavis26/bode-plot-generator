@@ -1,0 +1,125 @@
+// STM32L432KC_ADC.c
+// Source code for ADC1 functions
+
+#include <stdio.h>
+#include <stdint.h>
+#include <math.h>
+
+#include "STM32L432KC.h"
+#include <stm32l432xx.h>
+#include "STM32L432KC_ADC.h"
+#include "STM32L432KC_TIM.h"
+
+/*
+configureADC configures ADC to single conversion mode with 24.5 samples per clock 
+*/
+void configureADC(void) {
+    ///////////////////////// ADC CLK /////////////////////////////
+    RCC->AHB2ENR |= RCC_AHB2ENR_ADCEN;
+    //ADC clk derived from the AHB clock do not need to respect clk constraints because no injected channels are being used
+    RCC->CCIPR |= _VAL2FLD(RCC_CCIPR_ADCSEL, SYSCLK_SEL_ADC);
+
+    ///////////////////////// ADC CALIBRATION /////////////////////////////
+    ADC1->CR &= ~ADC_CR_ADEN;       //Make sure the ADC is not enabled
+    ADC1->CR &= ~ADC_CR_DEEPPWD;    // To start ADC first exit Deep-power-down mode
+
+    ADC1->CR |= ADC_CR_ADVREGEN;    //ADC1 Voltage Regulator Enable
+    delay_micros(TIM15, 50);  // software has to wait for startup time
+    
+    //ADC1->CR |= ADC_CR_ADCALDIF;     //Differential mode for calibration
+
+    ADC1->CR |= ADC_CR_ADCAL;     //Run Calibration Protocol
+    while (ADC1->CR & ADC_CR_ADCAL);
+
+    //////////////////////////ADC DR CONFIGURATION////////////////////////////
+    ADC1->CFGR &= ~ADC_CFGR_RES;    //Data Resolution
+    ADC1->CFGR |= _VAL2FLD(ADC_CFGR_RES, TWELVE_BIT_ADC1_RES);
+
+    ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR1_SMP7, 0b011); //ADC1 sample time register 24.5 ADC1 clock cycles
+
+    ADC1->CFGR &= ~ADC_CFGR_CONT;    //single conversion mode for regular conversions
+
+    ADC1->SQR1 &= ~ADC_SQR1_L; //clear conversion count
+    ADC1->SQR1 |= _VAL2FLD(ADC_SQR1_L, 0); //1 conversion
+
+    ADC1->SQR1 &= ~ADC_SQR1_SQ1; //clear sequence order
+    ADC1->SQR1 |= _VAL2FLD(ADC_SQR1_SQ1, ADC1_IN7); //1st conversion regular sequence to IN7
+
+    //////////////////////////ENABLE ADC1////////////////////////////
+    ADC1->CR |= ADC_CR_ADEN;
+    while (ADC1->ISR & ADC_ISR_ADRDY);
+}
+
+double amplitudeExtractRMS(const uint16_t *sine_array, int num_samples){
+    // compute DC offset (mean)
+    double sum = 0.0;
+    for (int i = 0; i < num_samples; i++) sum += sine_array[i];
+    double mean = sum / num_samples;
+
+    // compute sum of the square of each value
+    double square = 0.0;
+    for (int i = 0; i < num_samples; i++) {
+        double v = (double)sine_array[i] - mean;
+        square += v * v;
+    }
+    // find the average of the squared values and take the sqrt
+    double rms_counts = sqrt(square / num_samples);
+
+    // compute peak to peak amplitude
+    double peak_counts = rms_counts * sqrt(2.0);
+    return peak_counts;
+}
+
+/*
+amplitudeExtractPP calculates the PP amplitude of input array
+*/
+double amplitudeExtractPP(const uint16_t *sine_array, int num_samples){
+    uint16_t max_value = sine_array[0];
+    uint16_t min_value = sine_array[0];
+    
+    // Find max and min values
+    for (int i = 1; i < num_samples; i++) {
+        if (sine_array[i] > max_value) max_value = sine_array[i];
+        if (sine_array[i] < min_value) min_value = sine_array[i];
+    }
+    return (double)(max_value - min_value) / 2.0;
+}
+/*
+gainextraxt calculates the gain of the input array
+*/
+double gainExtract(double RX_amp, int atten){
+    double TX_amp = 0;
+    if (atten) {TX_amp = 900;}
+    else{TX_amp = 1800;}
+    return (double) 20.0 *log10(RX_amp/TX_amp);
+}
+/*
+phaseExtraxt calculates the phase difference between two times compared to a given frequency and wraps it to -180 to 180
+*/
+float phaseExtract(volatile uint32_t* rx_zc_times, volatile uint32_t* tx_zc_times, uint32_t frequency, int num_zero_cross){
+    // Convert time differences to phase differences (in degrees)
+    float phase[num_zero_cross];
+    
+    for (int i = 0; i < num_zero_cross; i++) {
+        // Cast to int32_t BEFORE subtraction to get proper signed result
+        int32_t sample_diff = (int32_t)tx_zc_times[i] - (int32_t)rx_zc_times[i];
+        
+        float time_diff = ((float)sample_diff) / TIMER_FREQ;
+        phase[i] = time_diff * frequency * 360.0;
+        
+        // Wrap phase to [-180, 180] range
+        while (phase[i] > 180.0f) phase[i] -= 360.0f;
+        while (phase[i] < -180.0f) phase[i] += 360.0f;
+    }
+
+    // Sum only valid phases (within ±180 degrees)
+    float sum = 0.0f;
+    
+    for (int i = 0; i < num_zero_cross; i++) {
+        if (phase[i] >= -180.0f && phase[i] <= 180.0f) {
+            sum += phase[i];
+        }
+    }
+    
+    return sum/num_zero_cross; // Return 0 if no valid phases found
+}

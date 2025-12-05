@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bode Plot</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        canvas {
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="phaseplot" width="600" height="400"></canvas>
+    <canvas id="gainplot" width="600" height="400"></canvas>
+
+    <script>
+
+        function plot_2D(freqs, gain, canvasID) {
+            const canvas = document.getElementById(canvasID);
+            const ctx = canvas.getContext("2d");
+
+            const width = canvas.width;
+            const height = canvas.height;
+    
+            const margin = 70;
+            
+            const x0 = margin;
+            const y0 = height - margin;
+            const x1 = width - margin;
+            const y1 = margin;
+
+            // compute log10-space bounds from the provided frequency array
+            
+            const freqMin = Math.min(...freqs);
+            const freqMax = Math.max(...freqs);
+            
+            const xmin = Math.log10(freqMin);
+            const xmax = Math.log10(freqMax);
+
+            // compute Y bounds before defining Y()
+            const ymin = Math.min(...gain);
+            const ymax = Math.max(...gain);
+
+            function X(log10Value) { 
+                return x0 + (log10Value - xmin) * (x1 - x0) / (xmax - xmin); 
+            }
+
+            function Y(value) { 
+                return y0 - (value - ymin) * (y0 - y1) / (ymax - ymin); 
+            }
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw axes
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "black";
+
+            ctx.beginPath();
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x1, y0);
+            ctx.moveTo(x0, y0);
+            ctx.lineTo(x0, y1);
+            ctx.stroke();
+
+            ctx.lineWidth = 2;
+            ctx.font = "12px sans-serif";
+            ctx.fillStyle = "black";
+
+            // X-axis: draw decade major ticks and minor ticks (2..9) using actual frequencies
+            ctx.textAlign = "center";
+            const decadeMin = Math.floor(xmin);
+            const decadeMax = Math.ceil(xmax);
+            
+            for (let d = decadeMin; d <= decadeMax; d++) {
+                for (let m = 1; m <= 9; m++) {
+                    const freq = m * Math.pow(10, d);
+                    if (freq < freqMin || freq > freqMax) continue;
+                    const cx = X(Math.log10(freq));
+                    ctx.beginPath();
+                    // major tick for m === 1, longer; minor for others
+                    if (m === 1) {
+                        ctx.moveTo(cx, y0);
+                        ctx.lineTo(cx, y0 + 10);
+                        ctx.stroke();
+                        // label decades (format thousands as k)
+                        const majorVal = Math.pow(10, d);
+                        const label = majorVal >= 1000 ? (majorVal / 1000) + "k" : String(majorVal);
+                        ctx.fillText(label, cx, y0 + 22);
+                    } else {
+                        ctx.moveTo(cx, y0);
+                        ctx.lineTo(cx, y0 + 6);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            // Y-axis tick marks and labels
+            ctx.textAlign = "right";
+            const numYTicks = 5;
+            for (let i = 0; i <= numYTicks; i++) {
+                const value = ymin + i * (ymax - ymin) / numYTicks; //scale y axis to input data range
+                const cy = Y(value);
+                ctx.beginPath();
+                ctx.moveTo(x0 - 8, cy);
+                ctx.lineTo(x0, cy);
+                ctx.stroke();
+                ctx.fillText(value.toFixed(1), x0 - 12, cy + 4);
+            }
+
+            // Axis labels
+            ctx.textAlign = "center";
+            ctx.font = "14px sans-serif";
+            ctx.fillText("Frequency [Hz]", width / 2 - 30, height - 20);
+            
+            ctx.save();
+            //rotate y axis label
+            ctx.translate(15, height / 2);
+            ctx.rotate(-Math.PI / 2);
+            if(canvasID == "gainplot"){ctx.fillText("Gain[dB]", -30, 5);}
+            else if(canvasID == "phaseplot"){ctx.fillText("Phase [degrees]", -30, 5)}
+            ctx.restore();
+
+            // Plotting dots
+            ctx.fillStyle = "blue";
+            for (let i = 0; i < gain.length; i++) {
+                ctx.beginPath();
+                // use log10 to map frequencies to X positions
+                const log_data_x = Math.log10(freqs[i]);
+                ctx.arc(X(log_data_x), Y(gain[i]), 3, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        }
+        const gain_data = [0, 0, 0, -10, -20, -30, -40];
+        const phase_data = [0, 0, 0, -10, -20, -30, -40];
+        const freq_data = [10, 50, 750, 1000,  3000, 50000, 100000];
+        plot_2D(freq_data, phase_data, "phaseplot");
+        plot_2D(freq_data, gain_data, "gainplot");
+    </script>
+    kjaberfefedfe
+</body>
+</html>
