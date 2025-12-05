@@ -1,5 +1,5 @@
 // debug.c
-// Source code for debug functions
+// Source code for debug functions and old functions that we didnt want to throw away just in case
 
 #include "STM32L432KC.h"
 #include <string.h>

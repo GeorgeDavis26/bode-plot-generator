@@ -38,7 +38,9 @@ void EXTI9_5_IRQHandler(void){
         }
     }
 }
-
+/*
+adcConversionGAIN samples amplitude values and stores them in a buffer
+*/
 void adcConversionGAIN(uint16_t* buffer, int num_samples) {
     for (int i = 0; i < num_samples; i++) {
         ADC1->CR &= ~ADC_CR_ADSTART;   // Make sure no ongoing conversion
@@ -49,7 +51,9 @@ void adcConversionGAIN(uint16_t* buffer, int num_samples) {
     ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
 }
-
+/*
+REadcConversionPHASE tracks a rising edge zero crossing on the ADC in
+*/
 void REadcConversionPHASE(uint32_t *rx_zc_time, int num_zero_cross) {
     
     uint16_t phase_buffer = 0;
@@ -72,7 +76,9 @@ void REadcConversionPHASE(uint32_t *rx_zc_time, int num_zero_cross) {
     ADC1->CR |= ADC_CR_ADSTP;         // ask hardware to stop
     while (ADC1->CR & ADC_CR_ADSTP);  // wait for it to actually stop
 }
-
+/*
+FEadcConversionPHASE tracks a falling edge zero crossing on the ADC in
+*/
 void FEadcConversionPHASE(uint32_t *rx_zc_time, int num_zero_cross) {
     
     uint16_t phase_buffer = 0;
@@ -102,7 +108,9 @@ int inString(char request[], char des[]) {
 	if (strstr(request, des) != NULL) {return 1;}
 	return -1;
 }
-
+/*
+CONFIG runs GPIO, peripheral, timer, interrupt enables
+*/
 void config(void){
   /*---------------GPIO enables---------------*/
   gpioEnable(GPIO_PORT_A);
@@ -177,7 +185,9 @@ void config(void){
     RCC->CFGR |= RCC_CFGR_MCOPRE_DIV8;  // Divide by 16
 
 };
-
+/*
+floatArray2String converts a float array to a string in javascript format for the ESP32
+*/
 void floatArray2String(float* array, char* string){
   char temp_buffer[40];
   string[0] = '\0'; // Initialize to empty string
@@ -193,7 +203,7 @@ void floatArray2String(float* array, char* string){
   strcat(string, "]"); // End of array    
 }
 
-/**
+/*
  * Converts a uint32_t array to a string representation.
  */
 void uint32Array2String(uint32_t* array, char* string){
@@ -210,6 +220,10 @@ void uint32Array2String(uint32_t* array, char* string){
   }
   strcat(string, "]"); // End of array    
 }
+
+/*
+main samples and generates a phase and gain bode plot with the ESP32 and LATIICEPro FPGA
+*/
 
 int main(void) {
   configureFlash();

@@ -10,7 +10,9 @@
 #include "STM32L432KC_ADC.h"
 #include "STM32L432KC_TIM.h"
 
-
+/*
+configureADC configures ADC to single conversion mode with 24.5 samples per clock 
+*/
 void configureADC(void) {
     ///////////////////////// ADC CLK /////////////////////////////
     RCC->AHB2ENR |= RCC_AHB2ENR_ADCEN;
@@ -33,7 +35,7 @@ void configureADC(void) {
     ADC1->CFGR &= ~ADC_CFGR_RES;    //Data Resolution
     ADC1->CFGR |= _VAL2FLD(ADC_CFGR_RES, TWELVE_BIT_ADC1_RES);
 
-    ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR1_SMP7, ADC_SAMPLETIME_24CYCLES_5); //ADC1 sample time register 246.5 ADC1 clock cycles
+    ADC1->SMPR1 |= _VAL2FLD(ADC_SMPR1_SMP7, 0b011); //ADC1 sample time register 24.5 ADC1 clock cycles
 
     ADC1->CFGR &= ~ADC_CFGR_CONT;    //single conversion mode for regular conversions
 
@@ -68,7 +70,9 @@ double amplitudeExtractRMS(const uint16_t *sine_array, int num_samples){
     return peak_counts;
 }
 
-
+/*
+amplitudeExtractPP calculates the PP amplitude of input array
+*/
 double amplitudeExtractPP(const uint16_t *sine_array, int num_samples){
     uint16_t max_value = sine_array[0];
     uint16_t min_value = sine_array[0];
@@ -80,20 +84,25 @@ double amplitudeExtractPP(const uint16_t *sine_array, int num_samples){
     }
     return (double)(max_value - min_value) / 2.0;
 }
-
+/*
+gainextraxt calculates the gain of the input array
+*/
 double gainExtract(double RX_amp, int atten){
     double TX_amp = 0;
     if (atten) {TX_amp = 900;}
     else{TX_amp = 1800;}
     return (double) 20.0 *log10(RX_amp/TX_amp);
 }
+/*
+phaseExtraxt calculates the phase difference between two times compared to a given frequency and wraps it to -180 to 180
+*/
 float phaseExtract(volatile uint32_t* rx_zc_times, volatile uint32_t* tx_zc_times, uint32_t frequency, int num_zero_cross){
     // Convert time differences to phase differences (in degrees)
     float phase[num_zero_cross];
     
     for (int i = 0; i < num_zero_cross; i++) {
         // Cast to int32_t BEFORE subtraction to get proper signed result
-        int32_t sample_diff = (int32_t)rx_zc_times[i] - (int32_t)tx_zc_times[i];
+        int32_t sample_diff = (int32_t)tx_zc_times[i] - (int32_t)rx_zc_times[i];
         
         float time_diff = ((float)sample_diff) / TIMER_FREQ;
         phase[i] = time_diff * frequency * 360.0;
@@ -114,39 +123,3 @@ float phaseExtract(volatile uint32_t* rx_zc_times, volatile uint32_t* tx_zc_time
     
     return sum/num_zero_cross; // Return 0 if no valid phases found
 }
-
-/*
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-double phaseExtract(volatile uint32_t* rx_zc_time, volatile uint32_t* tx_zc_time, uint32_t frequency, int num_zero_cross){
-    double sum_sin = 0.0;
-    double sum_cos = 0.0;
-    
-    // Calculate period in timer ticks
-    double period_ticks = (double)TIMER_FREQ / (double)frequency; 
-
-    for (int i = 0; i < num_zero_cross; i++) {
-        int32_t time_diff = (int32_t)(rx_zc_time[i] - tx_zc_time[i]);
-        
-        // Calculate Phase in Degrees
-        double phase_deg = (360.0 * (double)time_diff) / period_ticks;
-
-        // Convert to Radians for vector math
-        double phase_rad = phase_deg * (M_PI / 180.0);
-
-        // Accumulate vector components
-        sum_sin += sin(phase_rad);
-        sum_cos += cos(phase_rad);
-    }
-
-    // Calculate average angle using atan2 (returns -PI to +PI)
-    double mean_rad = atan2(sum_sin, sum_cos);
-
-    // Convert back to degrees
-    double mean_deg = mean_rad * (180.0 / M_PI);
-
-    return mean_deg;
-}
-*/
